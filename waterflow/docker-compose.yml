@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  waterflow2:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # ── Obligatoires ───────────────────────────────────────────
+      - DATABASE_URL=sqlite:////data/waterflow2.db
+      - MLFLOW_TRACKING_URI=sqlite:////data/mlflow_water.db
+      - MLFLOW_URI=${MLFLOW_URI:-models:/WaterQualityXGBoost/1}
+      - SCALER_PATH=/app/model_artifacts/robust_scaler.pkl
+      # ── OCR ────────────────────────────────────────────────────
+      - OCR_SPACE_API_KEY=${OCR_SPACE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # ── Limites ────────────────────────────────────────────────
+      - MAX_UPLOAD_MB=20
+      - FLASK_ENV=production
+    volumes:
+      - waterflow_data:/data
+      - ./model_artifacts:/app/model_artifacts:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  waterflow_data:

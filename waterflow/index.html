@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waterflow 2 — Plateforme Qualité Eau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink:      #0d1117;
+  --deep:     #0a2540;
+  --water:    #006aff;
+  --aqua:     #00c5c5;
+  --safe:     #00b97d;
+  --alert:    #ff4757;
+  --warn:     #ffa502;
+  --surface:  #f0f4f9;
+  --card:     #ffffff;
+  --border:   #d6e0ee;
+  --muted:    #6b7a90;
+  --mono:     'DM Mono', monospace;
+  --display:  'Syne', sans-serif;
+  --body:     'DM Sans', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--body);
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  background: var(--deep);
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #fff;
+  letter-spacing: -0.02em;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.logo-dot {
+  width: 8px; height: 8px;
+  background: var(--aqua);
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.8); }
+}
+.header-right {
+  display: flex; align-items: center; gap: 1rem;
+}
+.api-input {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.07);
+  color: #fff;
+  border-radius: 6px;
+  width: 220px;
+  outline: none;
+  transition: border-color .2s;
+}
+.api-input:focus { border-color: var(--aqua); }
+.api-input::placeholder { color: rgba(255,255,255,0.35); }
+.btn-connect {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.78rem;
+  padding: 0.4rem 1rem;
+  background: var(--water);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.btn-connect:hover { background: #005de0; }
+
+/* ── Layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  padding: 1.5rem 0;
+}
+.sidebar-section {
+  padding: 0.25rem 1rem 1rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+.nav-item:hover { color: var(--ink); background: var(--surface); }
+.nav-item.active {
+  color: var(--water);
+  border-left-color: var(--water);
+  background: #e8f0fe;
+  font-weight: 500;
+}
+.nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+/* ── Content ── */
+.content {
+  padding: 2rem;
+  overflow-y: auto;
+}
+.page { display: none; }
+.page.active { display: block; }
+
+.page-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--deep);
+  margin-bottom: 0.25rem;
+}
+.page-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 1.75rem;
+}
+
+/* ── KPI Cards ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.kpi-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.kpi-card.blue::before  { background: var(--water); }
+.kpi-card.green::before { background: var(--safe);  }
+.kpi-card.red::before   { background: var(--alert); }
+.kpi-card.teal::before  { background: var(--aqua);  }
+.kpi-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.kpi-value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2rem;
+  color: var(--deep);
+  line-height: 1;
+}
+.kpi-unit {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+/* ── Table ── */
+.table-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+.table-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.table-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--deep);
+}
+.btn-refresh {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all .15s;
+}
+.btn-refresh:hover { color: var(--water); border-color: var(--water); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.83rem;
+}
+thead th {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+tbody tr {
+  border-bottom: 1px solid #f0f4f9;
+  transition: background .1s;
+}
+tbody tr:hover { background: #f8faff; }
+td {
+  padding: 0.75rem 1rem;
+  color: var(--ink);
+  vertical-align: middle;
+}
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.badge-safe  { background: #d1fae5; color: #065f46; }
+.badge-alert { background: #fee2e2; color: #991b1b; }
+.badge-warn  { background: #fef3c7; color: #92400e; }
+.badge-info  { background: #dbeafe; color: #1e40af; }
+.proba-bar-wrap { width: 80px; height: 6px; background: var(--border); border-radius: 3px; display: inline-block; vertical-align: middle; }
+.proba-bar      { height: 6px; border-radius: 3px; }
+
+/* ── Upload zone ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 2.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: var(--card);
+  margin-bottom: 1rem;
+}
+.upload-zone:hover, .upload-zone.dragover {
+  border-color: var(--water);
+  background: #f0f6ff;
+}
+.upload-zone input { display: none; }
+.upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.upload-text {
+  font-family: var(--display);
+  font-weight: 600;
+  color: var(--deep);
+  margin-bottom: 0.25rem;
+}
+.upload-sub { font-size: 0.83rem; color: var(--muted); }
+
+.result-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  display: none;
+}
+.result-card.visible { display: block; }
+.result-verdict {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.verdict-icon { font-size: 2.5rem; }
+.verdict-label {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.75rem;
+}
+.verdict-label.safe  { color: var(--safe);  }
+.verdict-label.alert { color: var(--alert); }
+.verdict-proba {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.mesures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.mesure-chip {
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+.mesure-chip-name {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.mesure-chip-val {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--deep);
+}
+
+/* ── Metrics monitoring ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.metric-route-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+}
+.metric-route-name {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--water);
+  margin-bottom: 0.75rem;
+  word-break: break-all;
+}
+.metric-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.3rem 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid var(--surface);
+}
+.metric-row:last-child { border: none; }
+.metric-key { color: var(--muted); }
+.metric-val { font-family: var(--mono); font-weight: 500; color: var(--deep); }
+
+/* ── Loader ── */
+.loader {
+  display: none;
+  align-items: center; justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.loader.visible { display: flex; }
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--water);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+.toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; }
+.toast {
+  padding: 0.75rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  animation: slideIn .3s ease;
+  max-width: 320px;
+}
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.toast-error   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.toast-success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.toast-info    { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.empty-state-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+/* ── Warnings list ── */
+.warnings-list { margin-top: 0.75rem; }
+.warning-item {
+  display: flex; gap: 0.5rem; align-items: flex-start;
+  font-size: 0.8rem;
+  color: #92400e;
+  padding: 0.3rem 0;
+}
+.warning-item::before { content: '⚠'; flex-shrink: 0; }
+
+/* ── Pagination ── */
+.pagination {
+  display: flex; gap: 0.5rem; align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+.page-btn {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all .15s;
+}
+.page-btn:hover:not(:disabled) { color: var(--water); border-color: var(--water); }
+.page-btn:disabled { opacity: 0.4; cursor: default; }
+.page-btn.current { background: var(--water); color: #fff; border-color: var(--water); }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <span class="logo-dot"></span>
+    Waterflow <span style="color:var(--aqua);margin-left:2px">2</span>
+  </div>
+  <div class="header-right">
+    <input class="api-input" id="apiKeyInput" type="password" placeholder="Clé API…" autocomplete="off">
+    <button class="btn-connect" onclick="connectApi()">Connecter</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Qualité</div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span> Tableau de bord
+    </div>
+    <div class="nav-item" onclick="showPage('prelevements')">
+      <span class="nav-icon">🗂</span> Prélèvements
+    </div>
+    <div class="nav-item" onclick="showPage('ingestion')">
+      <span class="nav-icon">📤</span> Déposer fiche
+    </div>
+    <div class="sidebar-section" style="margin-top:1rem">Supervision</div>
+    <div class="nav-item" onclick="showPage('monitoring')">
+      <span class="nav-icon">🔍</span> Monitoring
+    </div>
+    <div class="sidebar-section" style="margin-top:1rem">Système</div>
+    <div class="nav-item" onclick="showPage('health')">
+      <span class="nav-icon">💚</span> État API
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-title">Tableau de bord qualité</div>
+      <div class="page-sub">Indicateurs en temps réel — prélèvements et prédictions</div>
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card blue"><div class="kpi-label">Prélèvements</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-unit">total</div></div>
+        <div class="kpi-card green"><div class="kpi-label">Taux potable</div><div class="kpi-value" id="kpi-potable">—</div><div class="kpi-unit">% des analyses</div></div>
+        <div class="kpi-card red"><div class="kpi-label">Non conformes</div><div class="kpi-value" id="kpi-nc">—</div><div class="kpi-unit">prédictions</div></div>
+        <div class="kpi-card teal"><div class="kpi-label">pH moyen</div><div class="kpi-value" id="kpi-ph">—</div><div class="kpi-unit">unités pH</div></div>
+      </div>
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">Prélèvements récents</div>
+          <button class="btn-refresh" onclick="loadDashboard()">↻ Actualiser</button>
+        </div>
+        <div class="loader" id="dash-loader"><div class="spinner"></div> Chargement…</div>
+        <table id="dash-table">
+          <thead><tr>
+            <th>Date</th><th>Client</th><th>Source</th>
+            <th>pH</th><th>Turbidité</th><th>Résultat</th><th>Probabilité</th>
+          </tr></thead>
+          <tbody id="dash-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="dash-empty" style="display:none">
+          <div class="empty-state-icon">🌊</div>
+          Connectez-vous avec une clé API pour afficher les données.
+        </div>
+      </div>
+    </div>
+
+    <!-- PRELEVEMENTS -->
+    <div id="page-prelevements" class="page">
+      <div class="page-title">Prélèvements</div>
+      <div class="page-sub">Liste complète — filtres et pagination</div>
+      <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap">
+        <input type="date" id="filter-from" style="padding:.4rem .75rem;border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:.8rem">
+        <input type="date" id="filter-to"   style="padding:.4rem .75rem;border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:.8rem">
+        <select id="filter-potable" style="padding:.4rem .75rem;border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:.8rem">
+          <option value="">Tous résultats</option>
+          <option value="1">Potable</option>
+          <option value="0">Non potable</option>
+        </select>
+        <button class="btn-connect" onclick="loadPrelevements(1)">Filtrer</button>
+      </div>
+      <div class="table-card">
+        <div class="loader" id="prev-loader"><div class="spinner"></div> Chargement…</div>
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Date</th><th>Lieu</th><th>Source</th>
+            <th>pH</th><th>Turbidité</th><th>Résultat</th><th>Proba</th>
+          </tr></thead>
+          <tbody id="prev-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="prev-empty" style="display:none">
+          <div class="empty-state-icon">📂</div> Aucun prélèvement trouvé.
+        </div>
+      </div>
+      <div class="pagination" id="prev-pagination"></div>
+    </div>
+
+    <!-- INGESTION OCR -->
+    <div id="page-ingestion" class="page">
+      <div class="page-title">Déposer une fiche</div>
+      <div class="page-sub">Photo ou PDF — extraction automatique par OCR puis prédiction</div>
+
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept="image/*,.pdf" onchange="handleFile(this.files[0])">
+        <div class="upload-icon">📋</div>
+        <div class="upload-text">Cliquez ou déposez votre fiche ici</div>
+        <div class="upload-sub">JPEG, PNG, PDF — max 20 Mo</div>
+      </div>
+
+      <div class="loader" id="ocr-loader"><div class="spinner"></div> Extraction en cours…</div>
+
+      <div class="result-card" id="ocrResult">
+        <div class="result-verdict" id="resultVerdict"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem">Date prélèvement</div>
+            <div style="font-weight:500" id="res-date">—</div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem">Client</div>
+            <div style="font-weight:500" id="res-client">—</div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem">ID prélèvement</div>
+            <div style="font-family:var(--mono);font-size:.8rem;color:var(--water)" id="res-id">—</div>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem">Observations</div>
+            <div style="font-size:.85rem" id="res-obs">—</div>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem">Mesures extraites</div>
+        <div class="mesures-grid" id="res-mesures"></div>
+        <div class="warnings-list" id="res-warnings"></div>
+      </div>
+    </div>
+
+    <!-- MONITORING -->
+    <div id="page-monitoring" class="page">
+      <div class="page-title">Monitoring système</div>
+      <div class="page-sub">Volumes, temps de réponse, taux d'erreur par route — accès admin</div>
+      <div style="margin-bottom:1rem">
+        <button class="btn-connect" onclick="loadMetrics()">↻ Actualiser les métriques</button>
+      </div>
+      <div class="loader" id="mon-loader"><div class="spinner"></div> Chargement…</div>
+      <div class="kpi-grid" id="mon-kpis" style="margin-bottom:1.5rem"></div>
+      <div class="metrics-grid" id="mon-routes"></div>
+      <div class="empty-state" id="mon-empty" style="display:none">
+        <div class="empty-state-icon">🔒</div>
+        Métriques réservées au profil admin.
+      </div>
+    </div>
+
+    <!-- HEALTH -->
+    <div id="page-health" class="page">
+      <div class="page-title">État de l'API</div>
+      <div class="page-sub">Vérification publique du service</div>
+      <button class="btn-connect" onclick="checkHealth()" style="margin-bottom:1.25rem">Vérifier maintenant</button>
+      <div class="table-card" style="padding:1.5rem" id="healthResult">
+        <div class="empty-state">
+          <div class="empty-state-icon">💡</div>
+          Cliquez sur "Vérifier maintenant"
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const API_BASE = window.location.origin;
+let apiKey = localStorage.getItem('wf2_api_key') || '';
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if (apiKey) {
+    document.getElementById('apiKeyInput').value = apiKey;
+    loadDashboard();
+  } else {
+    showEmpty('dash-empty', 'dash-table');
+  }
+  setupDrag();
+});
+
+function connectApi() {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('wf2_api_key', apiKey);
+  toast('Clé enregistrée.', 'success');
+  loadDashboard();
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'prelevements') loadPrelevements(1);
+  if (name === 'monitoring') loadMetrics();
+  if (name === 'health') checkHealth();
+}
+
+// ── API helper ────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const headers = { 'X-API-Key': apiKey, ...(opts.headers || {}) };
+  const res     = await fetch(API_BASE + path, { ...opts, headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  setLoader('dash-loader', true);
+  try {
+    const d = await apiFetch('/data/dashboard');
+    document.getElementById('kpi-total').textContent   = d.total_prelevements ?? '—';
+    document.getElementById('kpi-potable').textContent = d.potable_rate != null
+      ? (d.potable_rate * 100).toFixed(1) + '%' : '—';
+    document.getElementById('kpi-nc').textContent      = d.non_potable_count ?? '—';
+    document.getElementById('kpi-ph').textContent      = d.moyennes?.ph?.toFixed(2) ?? '—';
+
+    const tbody = document.getElementById('dash-tbody');
+    tbody.innerHTML = '';
+    if (!d.recents?.length) { showEmpty('dash-empty', 'dash-table'); return; }
+    document.getElementById('dash-empty').style.display = 'none';
+    document.getElementById('dash-table').style.display = '';
+
+    d.recents.forEach(p => tbody.innerHTML += rowHtml(p));
+  } catch(e) {
+    toast(e.message, 'error');
+    showEmpty('dash-empty', 'dash-table');
+  } finally {
+    setLoader('dash-loader', false);
+  }
+}
+
+function rowHtml(p) {
+  const pred    = p.prediction;
+  const potable = pred?.potable;
+  const badge   = potable === 1
+    ? '<span class="badge badge-safe">Potable</span>'
+    : potable === 0
+      ? '<span class="badge badge-alert">Non potable</span>'
+      : '<span class="badge badge-warn">—</span>';
+  const proba   = pred?.probability ?? null;
+  const probaBar = proba != null
+    ? `<div style="display:flex;align-items:center;gap:.4rem">
+         <div class="proba-bar-wrap"><div class="proba-bar" style="width:${(proba*100).toFixed(0)}%;background:${proba>.5?'var(--safe)':'var(--alert)'}"></div></div>
+         <span style="font-family:var(--mono);font-size:.75rem">${(proba*100).toFixed(1)}%</span>
+       </div>` : '—';
+  const date    = p.date_prelevement ? p.date_prelevement.slice(0,10) : '—';
+  const ph      = p.mesures?.ph?.toFixed(2) ?? '—';
+  const turb    = p.mesures?.Turbidity?.toFixed(2) ?? '—';
+  const src     = p.source
+    ? `<span class="badge badge-info">${p.source}</span>` : '—';
+  return `<tr>
+    <td style="font-family:var(--mono);font-size:.78rem">${date}</td>
+    <td style="font-family:var(--mono);font-size:.75rem;color:var(--muted)">${p.client_id?.slice(0,8) ?? '—'}</td>
+    <td>${src}</td>
+    <td style="font-family:var(--mono)">${ph}</td>
+    <td style="font-family:var(--mono)">${turb}</td>
+    <td>${badge}</td>
+    <td>${probaBar}</td>
+  </tr>`;
+}
+
+// ── Prélèvements list ─────────────────────────────────────────────────────
+let prevCurrentPage = 1;
+async function loadPrelevements(page) {
+  prevCurrentPage = page;
+  setLoader('prev-loader', true);
+  const from    = document.getElementById('filter-from').value;
+  const to      = document.getElementById('filter-to').value;
+  let   qs      = `?page=${page}&per_page=20`;
+  if (from) qs += `&date_from=${from}`;
+  if (to)   qs += `&date_to=${to}`;
+  try {
+    const d    = await apiFetch('/data/prelevements' + qs);
+    const tbody = document.getElementById('prev-tbody');
+    tbody.innerHTML = '';
+    if (!d.items?.length) {
+      document.getElementById('prev-empty').style.display = '';
+    } else {
+      document.getElementById('prev-empty').style.display = 'none';
+      d.items.forEach(p => tbody.innerHTML += rowHtml(p));
+    }
+    renderPagination(d.page, d.pages);
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    setLoader('prev-loader', false);
+  }
+}
+
+function renderPagination(cur, total) {
+  const el = document.getElementById('prev-pagination');
+  el.innerHTML = '';
+  if (total <= 1) return;
+  const btn = (label, page, disabled, active) => {
+    const b = document.createElement('button');
+    b.className = 'page-btn' + (active ? ' current' : '');
+    b.textContent = label;
+    b.disabled = disabled;
+    if (!disabled) b.onclick = () => loadPrelevements(page);
+    el.appendChild(b);
+  };
+  btn('‹', cur-1, cur<=1, false);
+  for (let i = Math.max(1,cur-2); i <= Math.min(total,cur+2); i++)
+    btn(i, i, false, i===cur);
+  btn('›', cur+1, cur>=total, false);
+}
+
+// ── OCR Ingestion ─────────────────────────────────────────────────────────
+function setupDrag() {
+  const zone = document.getElementById('uploadZone');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  if (!apiKey) { toast('Entrez votre clé API d\'abord.', 'error'); return; }
+  document.getElementById('ocrResult').classList.remove('visible');
+  setLoader('ocr-loader', true);
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const d = await fetch(API_BASE + '/ocr-and-predict', {
+      method: 'POST',
+      headers: { 'X-API-Key': apiKey },
+      body: fd,
+    }).then(async r => {
+      if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+      return r.json();
+    });
+
+    renderOcrResult(d);
+    toast('Fiche traitée avec succès.', 'success');
+  } catch(e) {
+    toast(e.message, 'error');
+  } finally {
+    setLoader('ocr-loader', false);
+  }
+}
+
+function renderOcrResult(d) {
+  const ocr  = d.ocr || {};
+  const pred = d.prediction;
+  const card = document.getElementById('ocrResult');
+
+  document.getElementById('res-date').textContent   = ocr.date_prelevement || '—';
+  document.getElementById('res-client').textContent = ocr.id_client || '—';
+  document.getElementById('res-id').textContent     = d.prelevement_id || '—';
+  document.getElementById('res-obs').textContent    = ocr.observations || '—';
+
+  const verd = document.getElementById('resultVerdict');
+  if (pred) {
+    const safe = pred.potable === 1;
+    verd.innerHTML = `
+      <div class="verdict-icon">${safe ? '✅' : '🚨'}</div>
+      <div>
+        <div class="verdict-label ${safe ? 'safe' : 'alert'}">${pred.label}</div>
+        <div class="verdict-proba">Probabilité : ${(pred.probability*100).toFixed(1)}%</div>
+      </div>`;
+  } else {
+    verd.innerHTML = `<div style="color:var(--warn)">⚠ Prédiction impossible — ${d.prediction_error || 'mesures incomplètes'}</div>`;
+  }
+
+  const m    = ocr.mesures || {};
+  const keys = ['ph','Hardness','Solids','Chloramines','Sulfate','Conductivity','Organic_carbon','Trihalomethanes','Turbidity'];
+  document.getElementById('res-mesures').innerHTML = keys.map(k =>
+    `<div class="mesure-chip">
+       <div class="mesure-chip-name">${k}</div>
+       <div class="mesure-chip-val">${m[k] != null ? m[k] : '<span style="color:var(--muted)">—</span>'}</div>
+     </div>`).join('');
+
+  const warns = ocr.warnings || [];
+  document.getElementById('res-warnings').innerHTML =
+    warns.length ? warns.map(w => `<div class="warning-item">${w}</div>`).join('') : '';
+
+  card.classList.add('visible');
+}
+
+// ── Monitoring ────────────────────────────────────────────────────────────
+async function loadMetrics() {
+  setLoader('mon-loader', true);
+  document.getElementById('mon-empty').style.display = 'none';
+  try {
+    const d      = await apiFetch('/metrics');
+    const kpis   = document.getElementById('mon-kpis');
+    const routes = document.getElementById('mon-routes');
+
+    kpis.innerHTML = `
+      <div class="kpi-card blue"><div class="kpi-label">Prélèvements</div><div class="kpi-value">${d.total_prelevements}</div><div class="kpi-unit">total</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Prédictions</div><div class="kpi-value">${d.total_predictions}</div><div class="kpi-unit">effectuées</div></div>
+      <div class="kpi-card teal"><div class="kpi-label">Taux potable</div><div class="kpi-value">${d.potable_rate != null ? (d.potable_rate*100).toFixed(1)+'%' : '—'}</div><div class="kpi-unit">modèle</div></div>`;
+
+    routes.innerHTML = '';
+    for (const [route, m] of Object.entries(d.routes || {})) {
+      routes.innerHTML += `
+        <div class="metric-route-card">
+          <div class="metric-route-name">${route}</div>
+          <div class="metric-row"><span class="metric-key">Requêtes</span><span class="metric-val">${m.count}</span></div>
+          <div class="metric-row"><span class="metric-key">Erreurs</span><span class="metric-val" style="color:${m.errors>0?'var(--alert)':'var(--safe)'}">${m.errors} (${(m.error_rate*100).toFixed(1)}%)</span></div>
+          <div class="metric-row"><span class="metric-key">p50</span><span class="metric-val">${m.p50_ms} ms</span></div>
+          <div class="metric-row"><span class="metric-key">p95</span><span class="metric-val">${m.p95_ms} ms</span></div>
+          <div class="metric-row"><span class="metric-key">Moy.</span><span class="metric-val">${m.avg_ms} ms</span></div>
+        </div>`;
+    }
+  } catch(e) {
+    document.getElementById('mon-empty').style.display = '';
+    toast(e.message, 'error');
+  } finally {
+    setLoader('mon-loader', false);
+  }
+}
+
+// ── Health ────────────────────────────────────────────────────────────────
+async function checkHealth() {
+  const el = document.getElementById('healthResult');
+  el.innerHTML = '<div class="loader visible"><div class="spinner"></div> Vérification…</div>';
+  try {
+    const d = await fetch(API_BASE + '/health').then(r => r.json());
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:1rem">
+        <div style="font-size:2.5rem">✅</div>
+        <div>
+          <div style="font-family:var(--display);font-weight:700;font-size:1.2rem;color:var(--safe)">Service opérationnel</div>
+          <div style="font-family:var(--mono);font-size:.8rem;color:var(--muted);margin-top:.25rem">Modèle : ${d.model}</div>
+          <div style="font-family:var(--mono);font-size:.75rem;color:var(--muted)">Horodatage : ${d.ts}</div>
+        </div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:1rem">
+        <div style="font-size:2.5rem">🔴</div>
+        <div>
+          <div style="font-family:var(--display);font-weight:700;font-size:1.2rem;color:var(--alert)">Service inaccessible</div>
+          <div style="font-size:.85rem;color:var(--muted);margin-top:.25rem">${e.message}</div>
+        </div>
+      </div>`;
+  }
+}
+
+// ── Utilitaires ───────────────────────────────────────────────────────────
+function setLoader(id, on) {
+  document.getElementById(id).classList.toggle('visible', on);
+}
+function showEmpty(emptyId, tableId) {
+  if (tableId) document.getElementById(tableId).style.display = 'none';
+  document.getElementById(emptyId).style.display = '';
+}
+function toast(msg, type = 'info') {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+</script>
+</body>
+</html>
