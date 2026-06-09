@@ -1,0 +1,37 @@
+============================================================
+   SYNDICAT DES EAUX DU VAR — Rapport terrain
+============================================================
+
+Réf.            : SEV-2025-0305-FOG
+Client          : CLIENT-087
+Site            : Forage municipal F-12
+Date            : 05/03/2025
+
+------------------------------------------------------------
+   MESURES TERRAIN (partiel — analyse labo en cours)
+------------------------------------------------------------
+
+pH                         :   6,2    ← valeur basse, à surveiller
+Turbidité mesurée terrain  :   8,4 NTU   ← dépassement seuil 5 NTU
+Conductivité               : 820 µS/cm
+
+NB : Les paramètres Hardness, Solids, Chloramines, Sulfate,
+     Organic_carbon et Trihalomethanes seront disponibles
+     après analyse en laboratoire (délai 48h).
+
+------------------------------------------------------------
+   OBSERVATIONS TERRAIN
+------------------------------------------------------------
+Odeur légèrement soufrée détectée.
+Coloration jaunâtre — probable teneur en fer élevée.
+Pompe de refoulement en panne — prélèvement manuel effectué.
+
+RECOMMANDATION : Mise en alerte — ne pas distribuer avant
+résultats complets.
+
+------------------------------------------------------------
+  Préleveur : [ANONYMISÉ]    Visa : ___________
+============================================================
+  Fiche partielle — exemple pour démonstration OCR.
+  Illustre le cas prediction_possible=false (mesures incomplètes).
+============================================================

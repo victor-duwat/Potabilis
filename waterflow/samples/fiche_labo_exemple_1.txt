@@ -1,0 +1,58 @@
+============================================================
+   LABORATOIRE AQUATEST PROVENCE
+   Rapport d'analyse d'eau potable — CONFIDENTIEL
+============================================================
+
+Client          : CLIENT-042 - M. Martin
+Adresse         : 12 rue des Sources, 13009 Marseille
+Type prélèv.    : Puits privé
+Date prélèv.    : 18/03/2025 09:30
+Réf. dossier    : AQT-2025-0318-042
+
+------------------------------------------------------------
+   RÉSULTATS ANALYTIQUES
+------------------------------------------------------------
+
+pH                         :   7,6
+Conductivité               : 650 µS/cm
+Température                :  16,2 °C
+Turbidité                  :   0,7 NTU
+Dureté totale              :  25,3 °f
+
+Paramètres microbiologiques :
+  Nitrates (NO3-)           :  32,5 mg/L
+  Nitrites (NO2-)           :   0,03 mg/L
+  Ammonium (NH4+)           :   0,04 mg/L
+  Chlorures (Cl-)           : 140 mg/L
+  Sulfates (SO4²-)          : 210 mg/L
+  Fer total                 :   0,08 mg/L
+  Manganèse                 :   0,01 mg/L
+
+Paramètres retenus pour l'analyse MLOps (modèle Waterflow) :
+  pH                        :   7,6
+  Hardness (dureté)         : 182,3 mg/L CaCO3
+  Solids (solides dissous)  : 18 450 mg/L
+  Chloramines               :   8,1 mg/L
+  Sulfate                   : 310,0 mg/L
+  Conductivity              : 415,0 µS/cm
+  Organic_carbon            :  14,2 mg/L
+  Trihalomethanes           :  66,4 µg/L
+  Turbidity                 :   3,8 NTU
+
+------------------------------------------------------------
+   OBSERVATIONS
+------------------------------------------------------------
+Eau prélevée en conditions normales.
+Aucune anomalie visuelle détectée.
+Résultats conformes aux seuils réglementaires (Décret 2001-1220).
+
+------------------------------------------------------------
+   SIGNATURE
+------------------------------------------------------------
+Analyste : [ANONYMISÉ]                  Date rapport : 18/03/2025
+Visa laboratoire : ___________________
+
+============================================================
+  Ce document est anonymisé à des fins de démonstration.
+  Les valeurs sont représentatives mais fictives.
+============================================================
