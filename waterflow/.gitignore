@@ -24,6 +24,3 @@ venv/
 # Jupyter checkpoints
 .ipynb_checkpoints/
 *.pdf
-
-# Documentation (local only, not versioned)
-docs/

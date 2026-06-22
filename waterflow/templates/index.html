@@ -111,6 +111,14 @@
                     class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
                     🔌 API
                 </button>
+                <button id="tab-btn-audit" onclick="showTab('audit')" data-tab="audit"
+                    class="tab-btn hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                    🔍 Audit
+                </button>
+                <button id="tab-btn-metrics" onclick="showTab('metrics')" data-tab="metrics"
+                    class="tab-btn hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                    📡 Métriques
+                </button>
             </nav>
             <div class="flex items-center gap-3 shrink-0">
                 <div class="flex items-center gap-1.5">
@@ -392,6 +400,79 @@
                 </div>
             </div>
 
+            <!-- Tab: Audit (exploit) -->
+            <div id="tab-audit" class="hidden fade-in">
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 mb-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Type acteur</label>
+                            <select id="aud-type" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
+                                <option value="">Tous</option>
+                                <option value="client">Client</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Acteur (ID)</label>
+                            <input id="aud-actor" type="text" placeholder="CLIENT-001…"
+                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Action</label>
+                            <input id="aud-action" type="text" placeholder="auth_failed…"
+                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                                onkeydown="if(event.key==='Enter')loadAudit()">
+                        </div>
+                        <div class="flex items-end">
+                            <button onclick="loadAudit()"
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors">
+                                Filtrer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+                        <h2 class="font-semibold text-white">Journal d'accès RGPD</h2>
+                        <span id="aud-count" class="text-xs text-slate-500"></span>
+                    </div>
+                    <div id="aud-table"></div>
+                    <div id="aud-pagination" class="px-6 py-3 border-t border-slate-700 hidden flex items-center gap-2 text-sm text-slate-400">
+                        <button id="aud-prev" onclick="auditPage(-1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40">←</button>
+                        <span id="aud-page-info"></span>
+                        <button id="aud-next" onclick="auditPage(1)"  class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40">→</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Métriques (exploit) -->
+            <div id="tab-metrics" class="hidden fade-in">
+                <div class="grid grid-cols-4 gap-4 mb-4">
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Clients total</p>
+                        <p class="text-3xl font-bold text-white" id="mx-clients">—</p>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Clients actifs</p>
+                        <p class="text-3xl font-bold text-blue-400" id="mx-actifs">—</p>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Prélèvements</p>
+                        <p class="text-3xl font-bold text-white" id="mx-prevs">—</p>
+                    </div>
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Taux potabilité</p>
+                        <p class="text-3xl font-bold text-green-400" id="mx-rate">—</p>
+                    </div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-700">
+                        <h2 class="font-semibold text-white">Métriques par route</h2>
+                    </div>
+                    <div id="mx-routes"></div>
+                </div>
+            </div>
+
             <!-- Tab: API Explorer -->
             <div id="tab-api" class="hidden fade-in">
                 <div class="flex items-center gap-3 mb-5">
@@ -526,24 +607,41 @@ function showApp() {
         document.getElementById('expert-tabs').classList.remove('hidden');
         document.getElementById('vw-client').classList.add('hidden');
         document.getElementById('vw-expert').classList.remove('hidden');
+        // Affiche les onglets exploit uniquement pour le rôle exploit
+        if (role === 'exploit') {
+            document.getElementById('tab-btn-audit').classList.remove('hidden');
+            document.getElementById('tab-btn-metrics').classList.remove('hidden');
+        }
         showTab('dash');
     }
 }
 
 function showTab(tab) {
-    ['dash', 'prevs', 'clis', 'cliDash', 'api'].forEach(t => document.getElementById(`tab-${t}`)?.classList.add('hidden'));
+    ['dash', 'prevs', 'clis', 'cliDash', 'api', 'audit', 'metrics'].forEach(t =>
+        document.getElementById(`tab-${t}`)?.classList.add('hidden'));
     document.getElementById(`tab-${tab}`)?.classList.remove('hidden');
+
+    const isExploit = S.profile?.role === 'exploit';
     document.querySelectorAll('.tab-btn').forEach(b => {
+        const exploitOnly = b.id === 'tab-btn-audit' || b.id === 'tab-btn-metrics';
+        if (exploitOnly && !isExploit) { b.classList.add('hidden'); return; }
+        b.classList.remove('hidden');
         const active = b.dataset.tab === tab;
-        b.className = `tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-            active ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-        }`;
+        b.className = b.className
+            .replace(/\bbg-slate-700\b|\btext-white\b|\btext-slate-400\b|\bhover:text-slate-200\b|\bhover:bg-slate-700\/50\b/g, '')
+            .replace(/\s+/g, ' ').trim();
+        b.className += active
+            ? ' bg-slate-700 text-white'
+            : ' text-slate-400 hover:text-slate-200 hover:bg-slate-700/50';
     });
-    if (tab === 'dash')  loadDashboard();
-    if (tab === 'prevs') loadAllPrevs();
-    if (tab === 'clis')  loadClients();
+
+    if (tab === 'dash')    loadDashboard();
+    if (tab === 'prevs')   loadAllPrevs();
+    if (tab === 'clis')    loadClients();
     if (tab === 'cliDash') loadCliDashList();
     if (tab === 'api' && !_apiSpec) loadApiExplorer();
+    if (tab === 'audit')   loadAudit();
+    if (tab === 'metrics') loadMetrics();
 }
 
 // ════════════════════════════════════════
@@ -1026,6 +1124,125 @@ async function selectClient(clientDbId) {
         const msg = e?.error || e?.message || JSON.stringify(e) || 'Erreur inconnue';
         document.getElementById('cd-prevs').innerHTML = `<p class="text-red-400 text-xs text-center py-6">${msg}</p>`;
         document.getElementById('cd-sources').innerHTML = '<p class="text-red-400 text-xs">—</p>';
+    }
+}
+
+// ════════════════════════════════════════
+// EXPLOIT — Audit
+// ════════════════════════════════════════
+let _auditPage = 1;
+
+async function loadAudit(page) {
+    _auditPage = page || 1;
+    const el = document.getElementById('aud-table');
+    el.innerHTML = spinnerHtml();
+
+    const params = new URLSearchParams({ page: _auditPage, per_page: 50 });
+    const typ    = document.getElementById('aud-type')?.value;
+    const actor  = document.getElementById('aud-actor')?.value.trim();
+    const action = document.getElementById('aud-action')?.value.trim();
+    if (typ)    params.set('actor_type', typ);
+    if (actor)  params.set('actor_id',   actor);
+    if (action) params.set('action',     action);
+
+    try {
+        const d = await api('GET', `/exploitation/audit?${params}`);
+        const items = d.items || [];
+        document.getElementById('aud-count').textContent =
+            d.total ? `${d.total} entrée${d.total > 1 ? 's' : ''}` : 'Aucun résultat';
+
+        if (!items.length) {
+            el.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">Aucune entrée.</p>';
+            document.getElementById('aud-pagination').classList.add('hidden');
+            return;
+        }
+
+        const statusCls = s => s < 300 ? 'text-green-400' : s < 500 ? 'text-yellow-400' : 'text-red-400';
+        el.innerHTML = `<div class="overflow-x-auto">
+        <table class="w-full text-xs">
+            <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wide border-b border-slate-700">
+                <th class="text-left px-4 py-3">Horodatage</th>
+                <th class="text-left px-4 py-3">Acteur</th>
+                <th class="text-left px-4 py-3">Rôle</th>
+                <th class="text-left px-4 py-3">IP</th>
+                <th class="text-left px-4 py-3">Action</th>
+                <th class="text-left px-4 py-3">Ressource</th>
+                <th class="text-left px-4 py-3">Statut</th>
+            </tr></thead>
+            <tbody>${items.map(l => `<tr class="border-b border-slate-700/40 hover:bg-slate-700/20 transition-colors">
+                <td class="px-4 py-2.5 text-slate-500 whitespace-nowrap">${new Date(l.timestamp).toLocaleString('fr-FR')}</td>
+                <td class="px-4 py-2.5 font-mono text-slate-300">${l.actor_id || '—'}</td>
+                <td class="px-4 py-2.5 text-slate-400">${l.actor_role || l.actor_type || '—'}</td>
+                <td class="px-4 py-2.5 font-mono text-slate-500">${l.ip_address || '—'}</td>
+                <td class="px-4 py-2.5 text-slate-300">${l.action}</td>
+                <td class="px-4 py-2.5 font-mono text-slate-500 truncate max-w-[120px]">${l.resource_id ? l.resource_id.slice(0,8)+'…' : '—'}</td>
+                <td class="px-4 py-2.5 font-bold ${statusCls(l.status_code)}">${l.status_code}</td>
+            </tr>`).join('')}</tbody>
+        </table></div>`;
+
+        // Pagination
+        const pg = document.getElementById('aud-pagination');
+        if (d.pages > 1) {
+            pg.classList.remove('hidden');
+            document.getElementById('aud-page-info').textContent = `Page ${d.page} / ${d.pages}`;
+            document.getElementById('aud-prev').disabled = d.page <= 1;
+            document.getElementById('aud-next').disabled = d.page >= d.pages;
+        } else {
+            pg.classList.add('hidden');
+        }
+    } catch(e) {
+        el.innerHTML = `<p class="text-red-400 text-sm text-center py-8">${e.error || 'Erreur chargement audit.'}</p>`;
+    }
+}
+
+function auditPage(delta) { loadAudit(_auditPage + delta); }
+
+// ════════════════════════════════════════
+// EXPLOIT — Métriques
+// ════════════════════════════════════════
+async function loadMetrics() {
+    const el = document.getElementById('mx-routes');
+    el.innerHTML = spinnerHtml();
+    ['mx-clients','mx-actifs','mx-prevs','mx-rate'].forEach(id =>
+        document.getElementById(id).textContent = '…');
+    try {
+        const d = await api('GET', '/exploitation/metrics');
+        document.getElementById('mx-clients').textContent = d.clients_total ?? '—';
+        document.getElementById('mx-actifs').textContent  = d.clients_actifs ?? '—';
+        document.getElementById('mx-prevs').textContent   = d.total_prelevements ?? '—';
+        document.getElementById('mx-rate').textContent    = d.potable_rate != null
+            ? `${(d.potable_rate * 100).toFixed(1)}%` : '—';
+
+        const routes = d.routes || {};
+        const sorted = Object.entries(routes).sort((a, b) => b[1].count - a[1].count);
+        if (!sorted.length) {
+            el.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">Aucune métrique.</p>';
+            return;
+        }
+        const errCls = r => r > 0.1 ? 'text-red-400' : r > 0 ? 'text-yellow-400' : 'text-green-400';
+        el.innerHTML = `<div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wide border-b border-slate-700">
+                <th class="text-left px-6 py-3">Route</th>
+                <th class="text-right px-6 py-3">Requêtes</th>
+                <th class="text-right px-6 py-3">Erreurs</th>
+                <th class="text-right px-6 py-3">Taux err.</th>
+                <th class="text-right px-6 py-3">p50 (ms)</th>
+                <th class="text-right px-6 py-3">p95 (ms)</th>
+                <th class="text-right px-6 py-3">Moy. (ms)</th>
+            </tr></thead>
+            <tbody>${sorted.map(([route, m]) => `<tr class="border-b border-slate-700/40 hover:bg-slate-700/20 transition-colors">
+                <td class="px-6 py-3 font-mono text-slate-300 text-xs">${route}</td>
+                <td class="px-6 py-3 text-right text-slate-300">${m.count}</td>
+                <td class="px-6 py-3 text-right ${m.errors > 0 ? 'text-red-400' : 'text-slate-500'}">${m.errors}</td>
+                <td class="px-6 py-3 text-right font-semibold ${errCls(m.error_rate)}">${(m.error_rate*100).toFixed(1)}%</td>
+                <td class="px-6 py-3 text-right text-slate-400">${m.p50_ms}</td>
+                <td class="px-6 py-3 text-right text-slate-400">${m.p95_ms}</td>
+                <td class="px-6 py-3 text-right text-slate-400">${m.avg_ms}</td>
+            </tr>`).join('')}</tbody>
+        </table></div>`;
+    } catch(e) {
+        el.innerHTML = `<p class="text-red-400 text-sm text-center py-8">${e.error || 'Erreur chargement métriques.'}</p>`;
     }
 }
 

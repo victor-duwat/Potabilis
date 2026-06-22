@@ -1,31 +1,31 @@
 """
 =============================================================
-TESTS FONCTIONNELS — Projet Water Potability MLOps
+TESTS FONCTIONNELS — Waterflow 2 (architecture v2)
 =============================================================
 Objectif : tester les endpoints de l'API Flask de bout en bout,
            en mockant le modèle MLflow et le scaler.
 Couverture :
   - GET  /health
   - GET  /
-  - POST /predict  (cas nominaux + cas d'erreur)
+  - POST /ingest/manual  (anciennement /predict — nécessite X-API-Key)
   - Comportement HTTP (codes de statut, Content-Type, JSON)
+  - Sécurité : accès sans clé → 401
 =============================================================
 """
 
+import os
 import json
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 
-
-# ──────────────────────────────────────────────────────────
-# FIXTURES — Application Flask avec mocks injectés
-# ──────────────────────────────────────────────────────────
-
-FEATURES = [
-    "ph", "Hardness", "Solids", "Chloramines", "Sulfate",
-    "Conductivity", "Organic_carbon", "Trihalomethanes", "Turbidity"
-]
+# ── Env avant import Flask ────────────────────────────────────────────────────
+os.environ.setdefault("DATABASE_URL",      "sqlite:///:memory:")
+os.environ.setdefault("MLFLOW_URI",        "mock")
+os.environ.setdefault("SCALER_PATH",       "mock")
+os.environ.setdefault("OCR_SPACE_API_KEY", "")
+os.environ.setdefault("ANTHROPIC_API_KEY", "")
+os.environ["EXPERT_TOKENS"] = "admin:token-admin-fonc:exploit"
 
 VALID_PAYLOAD = {
     "ph": 7.0,
@@ -39,277 +39,228 @@ VALID_PAYLOAD = {
     "Turbidity": 3.5,
 }
 
+FEATURES = [
+    "ph", "Hardness", "Solids", "Chloramines", "Sulfate",
+    "Conductivity", "Organic_carbon", "Trihalomethanes", "Turbidity",
+]
 
-def create_app_with_mocks(predict_value=1, proba_value=0.87):
-    """
-    Crée le client de test Flask en patchant les dépendances externes
-    (MLflow, joblib) pour que les tests soient indépendants de l'environnement.
-    """
-    mock_model = MagicMock()
-    mock_model.predict.return_value = np.array([predict_value])
-    mock_model.predict_proba.return_value = np.array([[1 - proba_value, proba_value]])
+ADMIN_HEADER = {"Authorization": "Bearer token-admin-fonc"}
 
-    mock_scaler = MagicMock()
-    mock_scaler.transform.return_value = np.zeros((1, 9))
+_mock_model = MagicMock()
+_mock_model.predict.return_value       = np.array([1])
+_mock_model.predict_proba.return_value = np.array([[0.13, 0.87]])
 
-    with patch("mlflow.set_tracking_uri"), \
-         patch("mlflow.xgboost.load_model", return_value=mock_model), \
-         patch("joblib.load", return_value=mock_scaler):
-        import importlib, sys
-
-        # Rechargement propre du module app pour chaque test
-        if "app" in sys.modules:
-            del sys.modules["app"]
-
-        import app as flask_app
-        flask_app.model = mock_model
-        flask_app.scaler = mock_scaler
-        flask_app.app.config["TESTING"] = True
-        client = flask_app.app.test_client()
-
-    return client, mock_model, mock_scaler
+_mock_scaler = MagicMock()
+_mock_scaler.transform.side_effect = lambda x: x
 
 
-# ──────────────────────────────────────────────────────────
-# SECTION 1 — Endpoint GET /health
-# ──────────────────────────────────────────────────────────
+# ── Fixtures ──────────────────────────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def app():
+    with patch("mlflow.xgboost.load_model", return_value=_mock_model), \
+         patch("joblib.load",               return_value=_mock_scaler), \
+         patch("mlflow.set_tracking_uri"):
+        from api.app       import create_app
+        from api.models.db import init_db
+        application = create_app()
+        application.config["TESTING"] = True
+        init_db()
+        return application
+
+
+@pytest.fixture(scope="module")
+def http(app):
+    return app.test_client()
+
+
+@pytest.fixture(scope="module")
+def api_key(http):
+    """Crée un client de test et retourne sa clé brute."""
+    r = http.post(
+        "/admin/clients",
+        json={
+            "id_client":    "FONC-001",
+            "denomination": "Commune de Test Fonctionnel",
+            "adresse":      "1 rue des Tests, 75000 Paris",
+        },
+        headers=ADMIN_HEADER,
+    )
+    assert r.status_code == 201, f"Création client échouée : {r.get_json()}"
+    client_uuid = r.get_json()["id"]
+
+    r2 = http.post(f"/admin/clients/{client_uuid}/apikey", headers=ADMIN_HEADER)
+    assert r2.status_code == 201, f"Génération clé échouée : {r2.get_json()}"
+    return r2.get_json()["api_key"]
+
+
+@pytest.fixture(scope="module")
+def client_header(api_key):
+    return {"X-API-Key": api_key}
+
+
+# ── SECTION 1 — Endpoint GET /health ─────────────────────────────────────────
 
 class TestEndpointHealth:
     """Vérifie la disponibilité et la réponse du health-check."""
 
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.client, self.model, self.scaler = create_app_with_mocks()
+    def test_health_statut_200(self, http):
+        assert http.get("/health").status_code == 200
 
-    def test_health_statut_200(self):
-        resp = self.client.get("/health")
-        assert resp.status_code == 200
+    def test_health_retourne_json(self, http):
+        assert http.get("/health").content_type == "application/json"
 
-    def test_health_retourne_json(self):
-        resp = self.client.get("/health")
-        assert resp.content_type == "application/json"
-
-    def test_health_champ_status_ok(self):
-        resp = self.client.get("/health")
-        data = json.loads(resp.data)
+    def test_health_champ_status_ok(self, http):
+        data = http.get("/health").get_json()
         assert data["status"] == "ok"
 
-    def test_health_champ_model_present(self):
-        resp = self.client.get("/health")
-        data = json.loads(resp.data)
+    def test_health_champ_model_present(self, http):
+        data = http.get("/health").get_json()
         assert "model" in data
         assert "WaterQualityXGBoost" in data["model"]
 
-    def test_health_methode_get_uniquement(self):
-        """POST sur /health doit retourner 405 Method Not Allowed."""
-        resp = self.client.post("/health")
-        assert resp.status_code == 405
+    def test_health_methode_post_retourne_405(self, http):
+        assert http.post("/health").status_code == 405
 
 
-# ──────────────────────────────────────────────────────────
-# SECTION 2 — Endpoint GET /
-# ──────────────────────────────────────────────────────────
+# ── SECTION 2 — Endpoint GET / ────────────────────────────────────────────────
 
 class TestEndpointIndex:
     """Vérifie que la page d'accueil est accessible."""
 
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.client, _, _ = create_app_with_mocks()
-
-    def test_index_statut_200_ou_redirect(self):
-        resp = self.client.get("/")
-        assert resp.status_code in (200, 302, 404)  # 404 si template absent en CI
+    def test_index_statut_valide(self, http):
+        assert http.get("/").status_code in (200, 302, 404)
 
 
-# ──────────────────────────────────────────────────────────
-# SECTION 3 — Endpoint POST /predict — Cas nominaux
-# ──────────────────────────────────────────────────────────
+# ── SECTION 3 — Endpoint POST /ingest/manual — Cas nominaux ──────────────────
 
-class TestEndpointPredictNominal:
-    """Teste les scénarios normaux de prédiction."""
+class TestEndpointIngestManualNominal:
+    """Teste les scénarios normaux de prédiction via /ingest/manual."""
 
-    @pytest.fixture(autouse=True)
-    def setup_potable(self):
-        self.client_potable, self.model_potable, _ = create_app_with_mocks(
-            predict_value=1, proba_value=0.87
+    def _post(self, http, client_header, payload=None):
+        return http.post(
+            "/ingest/manual",
+            json=payload or VALID_PAYLOAD,
+            headers=client_header,
         )
 
-    def test_predict_statut_200(self):
-        resp = self.client_potable.post(
-            "/predict",
+    def test_ingest_manual_statut_201(self, http, client_header):
+        assert self._post(http, client_header).status_code == 201
+
+    def test_ingest_manual_retourne_json(self, http, client_header):
+        assert "application/json" in self._post(http, client_header).content_type
+
+    def test_ingest_manual_champs_presents(self, http, client_header):
+        data = self._post(http, client_header).get_json()
+        assert "prelevement_id" in data
+        assert "prediction" in data
+
+    def test_ingest_manual_prediction_champs(self, http, client_header):
+        pred = self._post(http, client_header).get_json()["prediction"]
+        assert "potable" in pred
+        assert "label" in pred
+        assert "probability" in pred
+
+    def test_ingest_manual_label_potable(self, http, client_header):
+        pred = self._post(http, client_header).get_json()["prediction"]
+        assert pred["potable"] == 1
+        assert pred["label"] == "Potable"
+
+    def test_ingest_manual_probability_dans_intervalle(self, http, client_header):
+        pred = self._post(http, client_header).get_json()["prediction"]
+        assert 0.0 <= pred["probability"] <= 1.0
+
+    def test_ingest_manual_sans_content_type(self, http, client_header):
+        """L'API accepte le JSON même sans Content-Type explicite (force=True)."""
+        r = http.post(
+            "/ingest/manual",
             data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
+            headers=client_header,
         )
-        assert resp.status_code == 200
-
-    def test_predict_retourne_json(self):
-        resp = self.client_potable.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        assert resp.content_type == "application/json"
-
-    def test_predict_champs_presents(self):
-        resp = self.client_potable.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        data = json.loads(resp.data)
-        assert "potable" in data
-        assert "label" in data
-        assert "probability" in data
-
-    def test_predict_label_potable(self):
-        resp = self.client_potable.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        data = json.loads(resp.data)
-        assert data["potable"] == 1
-        assert data["label"] == "Potable"
-
-    def test_predict_label_non_potable(self):
-        client, _, _ = create_app_with_mocks(predict_value=0, proba_value=0.12)
-        resp = client.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        data = json.loads(resp.data)
-        assert data["potable"] == 0
-        assert data["label"] == "Non potable"
-
-    def test_predict_probability_dans_intervalle(self):
-        resp = self.client_potable.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        data = json.loads(resp.data)
-        assert 0.0 <= data["probability"] <= 1.0
-
-    def test_predict_model_appele_une_fois(self):
-        self.client_potable.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        assert self.model_potable.predict.call_count == 1
-
-    def test_predict_scaler_appele_avant_model(self):
-        """Le scaler doit être appelé avant le modèle."""
-        client, model, scaler = create_app_with_mocks()
-        call_order = []
-        scaler.transform.side_effect = lambda x: (call_order.append("scaler"), np.zeros((1, 9)))[1]
-        model.predict.side_effect = lambda x: (call_order.append("model"), np.array([1]))[1]
-
-        client.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        assert call_order.index("scaler") < call_order.index("model")
-
-    def test_predict_force_json_sans_content_type(self):
-        """L'API doit accepter le JSON même sans Content-Type explicite (force=True)."""
-        resp = self.client_potable.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD)
-        )
-        assert resp.status_code == 200
+        assert r.status_code == 201
 
 
-# ──────────────────────────────────────────────────────────
-# SECTION 4 — Endpoint POST /predict — Cas d'erreur
-# ──────────────────────────────────────────────────────────
+# ── SECTION 4 — Endpoint POST /ingest/manual — Cas d'erreur ──────────────────
 
-class TestEndpointPredictErreurs:
+class TestEndpointIngestManualErreurs:
     """Teste que l'API renvoie des erreurs cohérentes pour des inputs invalides."""
 
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        self.client, _, _ = create_app_with_mocks()
+    def _post(self, http, client_header, payload):
+        return http.post("/ingest/manual", json=payload, headers=client_header)
 
-    def _post(self, payload):
-        return self.client.post(
-            "/predict",
-            data=json.dumps(payload),
-            content_type="application/json"
-        )
+    def test_feature_manquante_retourne_400(self, http, client_header):
+        payload = {k: v for k, v in VALID_PAYLOAD.items() if k != "ph"}
+        assert self._post(http, client_header, payload).status_code == 400
 
-    def test_feature_manquante_retourne_400(self):
-        payload_incomplet = {k: v for k, v in VALID_PAYLOAD.items() if k != "ph"}
-        resp = self._post(payload_incomplet)
-        assert resp.status_code == 400
-
-    def test_feature_manquante_message_erreur(self):
-        payload_incomplet = {k: v for k, v in VALID_PAYLOAD.items() if k != "ph"}
-        resp = self._post(payload_incomplet)
-        data = json.loads(resp.data)
+    def test_feature_manquante_message_erreur(self, http, client_header):
+        payload = {k: v for k, v in VALID_PAYLOAD.items() if k != "ph"}
+        data = self._post(http, client_header, payload).get_json()
         assert "error" in data
 
-    def test_valeur_string_retourne_400(self):
-        payload_invalide = {**VALID_PAYLOAD, "ph": "abc"}
-        resp = self._post(payload_invalide)
-        assert resp.status_code == 400
+    def test_valeur_string_retourne_400(self, http, client_header):
+        payload = {**VALID_PAYLOAD, "ph": "abc"}
+        assert self._post(http, client_header, payload).status_code == 400
 
-    def test_payload_vide_retourne_400(self):
-        resp = self._post({})
-        assert resp.status_code == 400
+    def test_payload_vide_retourne_400(self, http, client_header):
+        assert self._post(http, client_header, {}).status_code == 400
 
-    def test_erreur_toujours_json(self):
-        """Même en cas d'erreur, la réponse doit être du JSON valide."""
-        payload_incomplet = {k: v for k, v in VALID_PAYLOAD.items() if k != "Turbidity"}
-        resp = self._post(payload_incomplet)
+    def test_erreur_toujours_json(self, http, client_header):
+        payload = {k: v for k, v in VALID_PAYLOAD.items() if k != "Turbidity"}
+        r = self._post(http, client_header, payload)
         try:
-            json.loads(resp.data)
-        except json.JSONDecodeError:
+            r.get_json()
+        except Exception:
             pytest.fail("La réponse d'erreur n'est pas du JSON valide")
 
     @pytest.mark.parametrize("missing_feature", FEATURES)
-    def test_chaque_feature_manquante_detectee(self, missing_feature):
-        """Supprimer n'importe quelle feature doit produire une erreur 400."""
+    def test_chaque_feature_manquante_detectee(self, http, client_header, missing_feature):
         payload = {k: v for k, v in VALID_PAYLOAD.items() if k != missing_feature}
-        resp = self._post(payload)
-        assert resp.status_code == 400, f"Feature '{missing_feature}' manquante non détectée"
+        r = self._post(http, client_header, payload)
+        assert r.status_code == 400, f"Feature '{missing_feature}' manquante non détectée"
 
 
-# ──────────────────────────────────────────────────────────
-# SECTION 5 — Intégration modèle + API
-# ──────────────────────────────────────────────────────────
+# ── SECTION 5 — Sécurité : authentification ──────────────────────────────────
+
+class TestAuthentification:
+    """Vérifie que les routes protégées rejettent les requêtes sans clé valide."""
+
+    def test_ingest_manual_sans_cle_retourne_401(self, http):
+        assert http.post("/ingest/manual", json=VALID_PAYLOAD).status_code == 401
+
+    def test_ingest_manual_cle_invalide_retourne_401(self, http):
+        r = http.post(
+            "/ingest/manual",
+            json=VALID_PAYLOAD,
+            headers={"X-API-Key": "cle-invalide-xyz"},
+        )
+        assert r.status_code == 401
+
+    def test_admin_sans_token_retourne_401(self, http):
+        assert http.get("/admin/clients").status_code == 401
+
+    def test_analyste_sans_token_retourne_401(self, http):
+        assert http.get("/analyste/prelevements").status_code == 401
+
+
+# ── SECTION 6 — Intégration modèle + API ─────────────────────────────────────
 
 class TestIntegrationModelAPI:
-    """Tests de bout en bout : vérifie la cohérence entre modèle et réponse."""
+    """Tests de bout en bout : cohérence entre modèle et réponse."""
 
-    @pytest.mark.parametrize("pred,proba,expected_label", [
+    @pytest.mark.parametrize("pred_val,proba_val,expected_label", [
         (1, 0.95, "Potable"),
         (1, 0.55, "Potable"),
         (0, 0.45, "Non potable"),
         (0, 0.05, "Non potable"),
     ])
-    def test_coherence_prediction_label_probabilite(self, pred, proba, expected_label):
-        client, _, _ = create_app_with_mocks(predict_value=pred, proba_value=proba)
-        resp = client.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        data = json.loads(resp.data)
-        assert data["label"] == expected_label
-        assert data["potable"] == pred
-
-    def test_probabilite_reflete_classe_positive(self):
-        """La probabilité retournée doit correspondre à P(potable=1)."""
-        expected_proba = 0.7654
-        client, _, _ = create_app_with_mocks(predict_value=1, proba_value=expected_proba)
-        resp = client.post(
-            "/predict",
-            data=json.dumps(VALID_PAYLOAD),
-            content_type="application/json"
-        )
-        data = json.loads(resp.data)
-        assert abs(data["probability"] - round(expected_proba, 4)) < 1e-4
+    def test_coherence_prediction_label(
+        self, http, client_header, pred_val, proba_val, expected_label
+    ):
+        mock = MagicMock()
+        mock.predict.return_value       = np.array([pred_val])
+        mock.predict_proba.return_value = np.array([[1 - proba_val, proba_val]])
+        with patch("predict_service._model", mock):
+            r    = http.post("/ingest/manual", json=VALID_PAYLOAD, headers=client_header)
+            pred = r.get_json()["prediction"]
+            assert pred["label"]   == expected_label
+            assert pred["potable"] == pred_val

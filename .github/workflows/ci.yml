@@ -1,0 +1,116 @@
+name: Waterflow 2 — CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: waterflow2
+  REGISTRY:   ghcr.io/${{ github.repository_owner }}
+
+jobs:
+  # ── Lint + Tests ──────────────────────────────────────────────────────────
+  test:
+    name: Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt pytest pytest-cov ruff
+
+      - name: Lint (ruff)
+        run: ruff check . --select E,F,W --ignore E501
+
+      - name: Tests unitaires + couverture
+        env:
+          DATABASE_URL:      sqlite:///:memory:
+          MLFLOW_URI:        mock
+          SCALER_PATH:       mock
+          OCR_SPACE_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+        run: |
+          pytest tests/ \
+            --cov=api \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -v
+
+      - name: Upload couverture (Codecov)
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: coverage.xml
+
+  # ── Build image Docker ────────────────────────────────────────────────────
+  build:
+    name: Build Docker image
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Métadonnées image
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Déploiement (main uniquement) ─────────────────────────────────────────
+  deploy:
+    name: Déploiement production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host:     ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key:      ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/waterflow2
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ needs.build.outputs.image_tag }}
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker compose ps
+            # Health check post-déploiement
+            sleep 10
+            curl -f http://localhost:8080/health || (docker compose logs --tail=50 && exit 1)
