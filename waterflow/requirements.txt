@@ -2,6 +2,8 @@
 flask>=3.0,<4
 gunicorn>=22.0
 python-dotenv>=1.0
+flask-limiter>=3.5        # rate limiting par clé API
+APScheduler>=3.10         # purge automatique des logs
 
 # ── Base de données ────────────────────────────────────────────────────────
 sqlalchemy>=2.0,<3
@@ -20,6 +22,9 @@ pymupdf>=1.23            # PDF → images (fitz)
 
 # ── Documentation API ─────────────────────────────────────────────────────
 flasgger>=0.9.7.1
+
+# ── Monitoring ────────────────────────────────────────────────────────────
+prometheus_flask_exporter>=0.23   # métriques Prometheus sur /metrics
 
 # ── Tests ─────────────────────────────────────────────────────────────────
 pytest>=8.0

@@ -1,0 +1,145 @@
+{
+  "__inputs": [],
+  "__requires": [
+    { "type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0" },
+    { "type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0" }
+  ],
+  "annotations": { "list": [] },
+  "description": "Waterflow 2 — Tableau de bord MLOps & API",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [
+          { "color": "green", "value": null },
+          { "color": "yellow", "value": 0.1 },
+          { "color": "red", "value": 0.3 }
+        ]}, "unit": "percentunit" }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "title": "Taux d'erreur global",
+      "type": "stat",
+      "targets": [{
+        "expr": "rate(flask_http_request_total{status=~'[45]..'}[5m]) / rate(flask_http_request_total[5m])",
+        "legendFormat": "Erreurs"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value" },
+      "title": "Requêtes / seconde",
+      "type": "stat",
+      "targets": [{
+        "expr": "rate(flask_http_request_total[1m])",
+        "legendFormat": "req/s"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "ms", "thresholds": { "steps": [
+          { "color": "green", "value": null },
+          { "color": "yellow", "value": 500 },
+          { "color": "red", "value": 2000 }
+        ]}}
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "id": 3,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "title": "Latence médiane (p50)",
+      "type": "stat",
+      "targets": [{
+        "expr": "histogram_quantile(0.5, rate(flask_http_request_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p50 ms"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "ms", "thresholds": { "steps": [
+          { "color": "green", "value": null },
+          { "color": "yellow", "value": 1000 },
+          { "color": "red", "value": 5000 }
+        ]}}
+      },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "id": 4,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "title": "Latence p95",
+      "type": "stat",
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(flask_http_request_duration_seconds_bucket[5m])) * 1000",
+        "legendFormat": "p95 ms"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "5xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" }}]},
+          { "matcher": { "id": "byName", "options": "4xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" }}]},
+          { "matcher": { "id": "byName", "options": "2xx" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" }}]}
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 5,
+      "options": { "tooltip": { "mode": "multi" } },
+      "title": "Volume de requêtes par statut HTTP",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(flask_http_request_total{status=~'2..'}[1m])", "legendFormat": "2xx" },
+        { "expr": "rate(flask_http_request_total{status=~'4..'}[1m])", "legendFormat": "4xx" },
+        { "expr": "rate(flask_http_request_total{status=~'5..'}[1m])", "legendFormat": "5xx" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2 }, "unit": "s" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 6,
+      "title": "Latence par route (p95)",
+      "type": "timeseries",
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(flask_http_request_duration_seconds_bucket[5m])) by (path)",
+        "legendFormat": "{{path}}"
+      }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2 }, "unit": "s" }
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "id": 7,
+      "title": "Latence des routes d'ingestion (p50 / p95)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "histogram_quantile(0.5, rate(flask_http_request_duration_seconds_bucket{path=~'/ingest/.*'}[5m])) by (path)", "legendFormat": "p50 {{path}}" },
+        { "expr": "histogram_quantile(0.95, rate(flask_http_request_duration_seconds_bucket{path=~'/ingest/.*'}[5m])) by (path)", "legendFormat": "p95 {{path}}" }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "tags": ["waterflow", "mlops", "api"],
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "Europe/Paris",
+  "title": "Waterflow 2 — Monitoring API",
+  "uid": "waterflow2-monitoring",
+  "version": 1
+}
