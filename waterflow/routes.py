@@ -40,7 +40,7 @@ import secrets
 import logging
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from sqlalchemy import func
 
 from api.models.db import (
@@ -50,6 +50,7 @@ from api.models.db import (
 from api.middleware.auth import (
     require_client_key, require_expert, timed, log_audit,
 )
+from extensions import limiter
 from api.services.ocr_service     import extract_from_document, ACCEPTED_MIME
 from api.services.predict_service import run_prediction, MLFLOW_MODEL_URI
 
@@ -434,6 +435,7 @@ def me_resultats():
 # ════════════════════════════════════════════════════════════════════════════
 
 @bp.route("/ingest/manual", methods=["POST"])
+@limiter.limit("20 per minute")
 @require_client_key
 @timed
 def ingest_manual():
@@ -471,6 +473,7 @@ def ingest_manual():
 
 
 @bp.route("/ingest/ocr", methods=["POST"])
+@limiter.limit("10 per minute")
 @require_client_key
 @timed
 def ingest_ocr():
@@ -508,6 +511,7 @@ def ingest_ocr():
 
 
 @bp.route("/ingest/ocr-and-predict", methods=["POST"])
+@limiter.limit("10 per minute")
 @require_client_key
 @timed
 def ingest_ocr_and_predict():

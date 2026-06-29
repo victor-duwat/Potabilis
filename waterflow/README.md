@@ -214,7 +214,8 @@ Le dossier `samples/` contient deux fiches anonymisées :
 - Table `audit_logs` immuable — journal de tous les accès
 - Droit à l'effacement via `DELETE /me/rgpd`
 - Conservation des logs : 12 mois glissants
-- Documentation complète : `docs/rgpd.md` (local, non versionné)
+- Clé API transmise uniquement via header `X-API-Key` (jamais en URL)
+- Documentation complète : `docs/rgpd.md`
 
 ---
 

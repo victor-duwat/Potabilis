@@ -25,7 +25,8 @@ Tables :
 import os
 import uuid
 import hashlib
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import (
     create_engine, Column, String, Float, Integer,
@@ -259,3 +260,51 @@ class RequestMetric(Base):
 def init_db():
     """Crée toutes les tables si elles n'existent pas."""
     Base.metadata.create_all(bind=engine)
+
+
+def purge_old_logs() -> dict:
+    """
+    Purge RGPD automatique — à appeler périodiquement (ex : nuit, cron).
+
+    Règles documentées dans docs/rgpd.md :
+      - audit_logs      : supprimés après 12 mois glissants
+      - request_metrics : supprimés après 90 jours glissants
+
+    Retourne le nombre de lignes supprimées par table.
+    """
+    logger = logging.getLogger(__name__)
+    db     = SessionLocal()
+    result = {"audit_logs": 0, "request_metrics": 0}
+
+    try:
+        cutoff_audit   = utcnow() - timedelta(days=365)
+        cutoff_metrics = utcnow() - timedelta(days=90)
+
+        n_audit = (
+            db.query(AuditLog)
+            .filter(AuditLog.timestamp < cutoff_audit)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        result["audit_logs"] = n_audit
+
+        n_metrics = (
+            db.query(RequestMetric)
+            .filter(RequestMetric.timestamp < cutoff_metrics)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        result["request_metrics"] = n_metrics
+
+        logger.info(
+            "Purge RGPD terminée — audit_logs supprimés : %d, "
+            "request_metrics supprimés : %d",
+            n_audit, n_metrics,
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.error("Purge RGPD échouée : %s", exc)
+    finally:
+        db.close()
+
+    return result

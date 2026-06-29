@@ -4,6 +4,12 @@ Lance le serveur Flask ou Gunicorn selon l'environnement.
 """
 
 import os
+
+# Force le répertoire courant = dossier de main.py
+# Garantit que tous les chemins relatifs (.env, SQLite, model_artifacts/)
+# se résolvent depuis waterflow/ quel que soit le CWD de lancement.
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 from dotenv import load_dotenv
 load_dotenv()  # charge .env si présent
 

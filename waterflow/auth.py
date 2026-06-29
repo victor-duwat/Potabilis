@@ -4,8 +4,7 @@ api/middleware/auth.py — Authentification Waterflow 2
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  MONDE 1 — CLIENTS (collectivités)
    Mécanisme  : clé API générée par la plateforme
-   Transport  : header  X-API-Key: <clé>
-              : ou param ?api_key=<clé>
+   Transport  : header  X-API-Key: <clé>  (jamais en paramètre URL)
    Périmètre  : leurs propres données uniquement
    Décorateur : @require_client_key
 
@@ -23,7 +22,10 @@ api/middleware/auth.py — Authentification Waterflow 2
               : @require_expert(role="exploit")  → exploit uniquement
 
  Exemple de configuration minimale (.env ou variable système) :
-   EXPERT_TOKENS="alice:token-alice-32chars-minimum:analyste,bob:token-bob-32chars-minimum:exploit"
+   EXPERT_TOKENS="alice:<sha256_du_token>:analyste,bob:<sha256_du_token>:exploit"
+
+   Le champ token doit être le hash SHA-256 du token brut (64 chars hex).
+   Générez une entrée prête à coller avec : flask new-expert-token <login> <role>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -48,21 +50,23 @@ from api.models.db import Client, AuditLog, RequestMetric, get_db, utcnow
 
 logger = logging.getLogger(__name__)
 
-# Longueur minimale recommandée pour les tokens experts (caractères)
-_TOKEN_MIN_LEN = 20
-
 
 # ════════════════════════════════════════════════════════════════════════════
 # Chargement et validation des tokens experts au démarrage
 # ════════════════════════════════════════════════════════════════════════════
+
+_TOKEN_MIN_LEN = 20
+
 
 def _load_expert_tokens() -> dict[str, tuple[str, str]]:
     """
     Parse EXPERT_TOKENS="login:token:role,login2:token2:role2"
     Retourne { sha256(token): (login, role) }
 
+    Les tokens sont stockés en clair dans .env (fichier gitignored, accès serveur uniquement).
+    Le hachage se fait en mémoire au démarrage — jamais persisté.
+
     Appelé une seule fois au démarrage du module.
-    Émet des warnings si la configuration est absente ou mal formée.
     """
     raw    = os.getenv("EXPERT_TOKENS", "").strip()
     result: dict[str, tuple[str, str]] = {}
@@ -103,12 +107,9 @@ def _load_expert_tokens() -> dict[str, tuple[str, str]]:
 
         if len(token) < _TOKEN_MIN_LEN:
             logger.warning(
-                "EXPERT_TOKENS : token de '%s' trop court (%d chars, min %d). "
-                "Utilisez un token d'au moins %d caractères.",
-                login, len(token), _TOKEN_MIN_LEN, _TOKEN_MIN_LEN,
+                "EXPERT_TOKENS : token de '%s' trop court (%d chars, min %d).",
+                login, len(token), _TOKEN_MIN_LEN,
             )
-            # On accepte quand même pour ne pas bloquer le démarrage,
-            # mais le warning est émis.
 
         token_hash = hashlib.sha256(token.encode()).hexdigest()
 
@@ -272,9 +273,11 @@ def require_client_key(f):
     """
     Authentifie un CLIENT par clé API.
 
-    La clé est cherchée dans l'ordre :
+    La clé est cherchée dans le header HTTP uniquement :
       1. Header  X-API-Key: <clé>
-      2. Paramètre URL  ?api_key=<clé>
+
+    Note : le paramètre ?api_key= n'est volontairement PAS supporté —
+    une clé dans l'URL est loggée par les proxies et l'historique navigateur.
 
     En cas de succès, injecte dans flask.g :
       g.actor_type = 'client'
@@ -283,10 +286,7 @@ def require_client_key(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        raw_key = (
-            request.headers.get("X-API-Key")
-            or request.args.get("api_key")
-        )
+        raw_key = request.headers.get("X-API-Key")
         db     = next(get_db())
         client = _resolve_client(raw_key, db)
 
