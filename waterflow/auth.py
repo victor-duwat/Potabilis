@@ -46,7 +46,7 @@ from functools import wraps
 from flask import request, jsonify, g
 from sqlalchemy.orm import Session
 
-from api.models.db import Client, AuditLog, RequestMetric, get_db, utcnow
+from api.models.db import Client, AuditLog, RequestMetric, get_db
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ def _resolve_client(raw_key: str | None, db: Session) -> Client | None:
     key_hash = Client.hash_key(raw_key)
     return (
         db.query(Client)
-          .filter(Client.api_key_hash == key_hash, Client.actif == True)
+          .filter(Client.api_key_hash == key_hash, Client.actif.is_(True))
           .first()
     )
 

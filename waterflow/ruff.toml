@@ -1,0 +1,12 @@
+# Configuration ruff — Waterflow 2
+#
+# Les notebooks sont du code exploratoire (EDA, entraînement) : on ne les
+# soumet pas aux règles d'un module applicatif.
+extend-exclude = ["*.ipynb"]
+
+[lint.per-file-ignores]
+# Ces points d'entrée configurent l'environnement (os.chdir / load_dotenv)
+# AVANT d'importer l'application. L'ordre des imports est donc volontaire (E402).
+"app.py"             = ["E402"]
+"main.py"            = ["E402"]
+"setup_waterflow.py" = ["E402"]

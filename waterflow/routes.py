@@ -40,12 +40,12 @@ import secrets
 import logging
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify, g, current_app
+from flask import Blueprint, request, jsonify, g
 from sqlalchemy import func
 
 from api.models.db import (
     Client, Prelevement, Mesure, Prediction,
-    AuditLog, RequestMetric, IngestionSource, get_db, utcnow,
+    AuditLog, RequestMetric, IngestionSource, utcnow,
 )
 from api.middleware.auth import (
     require_client_key, require_expert, timed, log_audit,
@@ -841,7 +841,7 @@ def analyste_dashboard():
         "non_potable_count":   total_preds - potable_count,
         "potable_rate":        round(potable_count / total_preds, 4)
                                if total_preds else None,
-        "clients_actifs":      db.query(Client).filter(Client.actif == True).count(),
+        "clients_actifs":      db.query(Client).filter(Client.actif.is_(True)).count(),
         "sources": {
             (k.value if hasattr(k, "value") else str(k)): v
             for k, v in sources.items()
@@ -910,7 +910,7 @@ def exploitation_metrics():
         "routes":             summary,
         "sample_size":        len(rows),
         "clients_total":      db.query(Client).count(),
-        "clients_actifs":     db.query(Client).filter(Client.actif == True).count(),
+        "clients_actifs":     db.query(Client).filter(Client.actif.is_(True)).count(),
         "total_prelevements": db.query(Prelevement).count(),
         "total_predictions":  total_preds,
         "potable_rate":       round(potable_count / total_preds, 4)
@@ -943,15 +943,15 @@ def exploitation_audit():
     return jsonify({
         **paged,
         "items": [{
-            "id":          l.id,
-            "timestamp":   l.timestamp.isoformat(),
-            "actor_type":  l.actor_type,
-            "actor_id":    l.actor_id,
-            "actor_role":  l.actor_role,
-            "ip_address":  l.ip_address,
-            "action":      l.action,
-            "resource_id": l.resource_id,
-            "status_code": l.status_code,
-            "detail":      l.detail,
-        } for l in paged["items"]],
+            "id":          log.id,
+            "timestamp":   log.timestamp.isoformat(),
+            "actor_type":  log.actor_type,
+            "actor_id":    log.actor_id,
+            "actor_role":  log.actor_role,
+            "ip_address":  log.ip_address,
+            "action":      log.action,
+            "resource_id": log.resource_id,
+            "status_code": log.status_code,
+            "detail":      log.detail,
+        } for log in paged["items"]],
     })

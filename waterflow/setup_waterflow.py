@@ -9,7 +9,6 @@ Lance depuis waterflow/ :  python setup_waterflow.py
 """
 
 import os
-import sys
 import json
 import joblib
 import numpy as np

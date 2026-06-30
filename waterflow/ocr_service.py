@@ -22,7 +22,6 @@ import re
 import json
 import base64
 import logging
-from io import BytesIO
 from typing import Any
 
 import requests

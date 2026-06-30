@@ -24,7 +24,7 @@ os.environ.setdefault("MLFLOW_URI",        "mock")
 os.environ.setdefault("SCALER_PATH",       "mock")
 os.environ.setdefault("OCR_SPACE_API_KEY", "")
 os.environ.setdefault("ANTHROPIC_API_KEY", "")
-os.environ["EXPERT_TOKENS"] = "admin:token-admin-e2e:exploit"
+# EXPERT_TOKENS est défini globalement dans conftest.py (jeu commun à toute la suite)
 
 # ── OCR simulé — résultat d'une fiche labo correctement extraite ─────────────
 MOCK_OCR_RESULT = {
@@ -110,8 +110,11 @@ class TestE2EPipelineOcrPredict:
     @pytest.fixture(autouse=True)
     def patch_ocr(self):
         """Remplace l'appel OCR réel par le résultat simulé."""
+        # routes.py fait `from api.services.ocr_service import extract_from_document`,
+        # le nom est donc lié dans le namespace du module `routes` : c'est là qu'il
+        # faut patcher (et non dans api.services.ocr_service, déjà importé).
         with patch(
-            "api.services.ocr_service.extract_from_document",
+            "routes.extract_from_document",
             return_value=MOCK_OCR_RESULT,
         ):
             yield
@@ -225,11 +228,11 @@ class TestE2EPipelineOcrPredict:
         """Si l'OCR ne retourne pas toutes les mesures, prediction_possible=False."""
         ocr_partiel = {**MOCK_OCR_RESULT, "mesures": {"ph": 7.0}}  # mesures incomplètes
         with patch(
-            "api.services.ocr_service.extract_from_document",
+            "routes.extract_from_document",
             return_value=ocr_partiel,
         ):
             r = http.post(
-                "/ingest/ocr",
+                "/ingest/ocr-and-predict",
                 data={"file": (self._fake_pdf(), "fiche_labo.pdf", "application/pdf")},
                 content_type="multipart/form-data",
                 headers=client_header,

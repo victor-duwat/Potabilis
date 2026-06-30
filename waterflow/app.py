@@ -89,6 +89,11 @@ def create_app() -> Flask:
     # ── Rate limiting ────────────────────────────────────────────────────────
     # Initialise le limiter avec l'app Flask.
     # Les limites par route sont déclarées dans routes.py via @limiter.limit().
+    # Désactivable via RATELIMIT_ENABLED=false (utilisé par la suite de tests,
+    # où l'on enchaîne volontairement de nombreuses requêtes).
+    app.config["RATELIMIT_ENABLED"] = (
+        os.getenv("RATELIMIT_ENABLED", "true").lower() not in ("false", "0", "no")
+    )
     limiter.init_app(app)
 
     @app.errorhandler(429)

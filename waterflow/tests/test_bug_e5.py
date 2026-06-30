@@ -30,7 +30,7 @@ os.environ.setdefault("MLFLOW_URI",        "mock")
 os.environ.setdefault("SCALER_PATH",       "mock")
 os.environ.setdefault("OCR_SPACE_API_KEY", "")
 os.environ.setdefault("ANTHROPIC_API_KEY", "")
-os.environ["EXPERT_TOKENS"] = "admin:token-admin-bug:exploit"
+# EXPERT_TOKENS est défini globalement dans conftest.py (jeu commun à toute la suite)
 
 ADMIN_HEADER  = {"Authorization": "Bearer token-admin-bug"}
 
