@@ -1,0 +1,24 @@
+# ──────────────────────────────────────────────────────────────
+# Racine du dépôt : ne versionner QUE le dossier waterflow/
+# (et .github/workflows pour la CI). Tout le reste est local.
+# ──────────────────────────────────────────────────────────────
+
+# Documents d'examen / matériel de cours — strictement local
+pdf/
+*.pdf
+
+# Configuration locale Claude Code
+.claude/
+
+# Artefacts MLflow à la racine (régénérés)
+mlflow_water.db
+mlflow_artifacts/
+mlruns/
+
+# Divers
+.DS_Store
+Thumbs.db
+__pycache__/
+*.pyc
+.venv/
+venv/

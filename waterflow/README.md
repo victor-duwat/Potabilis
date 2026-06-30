@@ -8,31 +8,35 @@ Exposée via une **API Flask unique** portant trois modules : données, prédict
 ## Architecture
 
 ```
+.github/workflows/ci.yml        # CI/CD GitHub Actions (à la racine du dépôt)
 waterflow/
-├── api/
-│   ├── app.py                  # Factory Flask + init Swagger
+├── app.py / auth.py / routes.py / predict_service.py   # Implémentations cœur
+├── api/                        # Package applicatif (ré-exporte le cœur)
+│   ├── app.py                  # Factory Flask + Swagger + Prometheus + rate limiting
 │   ├── models/db.py            # Modèles SQLAlchemy (RGPD)
 │   ├── middleware/auth.py      # Auth clé API (clients) + Bearer (experts)
 │   ├── routes/routes.py        # Toutes les routes API
 │   └── services/
 │       ├── ocr_service.py      # OCR.space (primaire) + Claude Vision (fallback)
 │       └── predict_service.py  # XGBoost via MLflow
-├── templates/index.html        # Interface web expert
-├── scripts/
-│   └── init_db.py              # Initialisation DB + données de test
+├── templates/index.html        # Interface web (SPA Tailwind) clients + experts
+├── scripts/init_db.py          # Initialisation DB + données de test
 ├── tests/
+│   ├── conftest.py             # Config partagée (tokens experts, env de test)
 │   ├── test_api.py             # Tests intégration complets (Waterflow 2)
 │   ├── test_e2e.py             # Test bout en bout : OCR → prédiction
 │   ├── test_unitaires.py       # Tests unitaires (modèle)
 │   ├── test_fonctionnels.py    # Tests fonctionnels (routes)
-│   └── test_non_regression.py  # Tests de non-régression
+│   ├── test_non_regression.py  # Tests de non-régression
+│   └── test_bug_e5.py          # Test de détection du bug E5 (probabilité inversée)
+├── docs/                       # MCD, architecture, user stories, RGPD, incidents, sources E1
+├── monitoring/                 # Config Prometheus + dashboards Grafana provisionnés
 ├── samples/                    # Fiches labo anonymisées (exemples OCR)
 ├── model_artifacts/            # Modèle XGBoost + scaler
 ├── swagger.yaml                # Documentation OpenAPI — accessible sur /apidocs
-├── main.py                     # Point d'entrée Gunicorn
+├── main.py                     # Point d'entrée (serveur Flask / Gunicorn)
 ├── Dockerfile
-├── docker-compose.yml
-├── ci.yml                      # CI/CD GitHub Actions
+├── docker-compose.yml          # API + Prometheus + Grafana
 ├── requirements.txt
 └── .env.example
 ```
@@ -149,7 +153,8 @@ Documentation interactive complète : **`/apidocs`** (Swagger UI)
 ```
 X-API-Key: <clé_générée_par_la_plateforme>
 ```
-ou `?api_key=<clé>` en paramètre URL.
+La clé est transmise **uniquement** via le header `X-API-Key` — jamais en paramètre
+d'URL (une clé dans l'URL est journalisée par les proxies et l'historique navigateur).
 
 ### Experts (analystes / exploitation)
 ```
@@ -219,10 +224,26 @@ Le dossier `samples/` contient deux fiches anonymisées :
 
 ---
 
+## Supervision (Prometheus / Grafana)
+
+Le monitoring est intégré au `docker compose` :
+
+- L'API expose les métriques au format Prometheus sur **`/metrics`** (via `prometheus_flask_exporter`).
+- **Prometheus** (port 9090) scrape l'API toutes les 10 s.
+- **Grafana** (port 3000, `admin` / `waterflow`) charge automatiquement la source de
+  données et le dashboard `Waterflow 2 — Monitoring API` (taux d'erreur, latences p50/p95,
+  volume par statut HTTP, latence des routes d'ingestion).
+
+```bash
+docker compose up -d        # API + Prometheus + Grafana
+# Grafana : http://localhost:3000   (dashboard provisionné automatiquement)
+```
+
+---
+
 ## Limites connues et pistes d'amélioration
 
-- Pas de rate limiting (à ajouter au niveau du reverse proxy)
-- Pas de CORS configuré (nécessaire si frontend séparé)
+- CORS non configuré (à activer si un frontend séparé consomme l'API)
 - La clé API est unique par client (pas de rotation multiple simultanée)
-- Prometheus/Grafana non intégrés (métriques accessibles via `/exploitation/metrics`)
 - Authentification expert par token statique (pas de rotation automatique)
+- Alerting Grafana non configuré (dashboards en lecture seule pour l'instant)

@@ -132,8 +132,23 @@ def _load_expert_tokens() -> dict[str, tuple[str, str]]:
     return result
 
 
-# Chargé une fois au démarrage du module
-_EXPERT_TOKENS: dict[str, tuple[str, str]] = _load_expert_tokens()
+# Cache des tokens experts, indexé par la valeur brute d'EXPERT_TOKENS.
+# En production la variable est figée → chargée une seule fois.
+# Si la configuration change (rechargement, tests), le cache se reconstruit.
+_TOKENS_CACHE: dict[str, dict[str, tuple[str, str]]] = {}
+
+
+def _get_expert_tokens() -> dict[str, tuple[str, str]]:
+    """Retourne la map { sha256(token): (login, role) } pour la config courante."""
+    raw = os.getenv("EXPERT_TOKENS", "").strip()
+    if raw not in _TOKENS_CACHE:
+        _TOKENS_CACHE.clear()  # une seule config active à la fois
+        _TOKENS_CACHE[raw] = _load_expert_tokens()
+    return _TOKENS_CACHE[raw]
+
+
+# Pré-chargement au démarrage du module (log des experts configurés)
+_get_expert_tokens()
 
 
 def _resolve_expert(bearer: str | None) -> tuple[str, str] | None:
@@ -148,7 +163,7 @@ def _resolve_expert(bearer: str | None) -> tuple[str, str] | None:
     if not raw_token:
         return None
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-    return _EXPERT_TOKENS.get(token_hash)
+    return _get_expert_tokens().get(token_hash)
 
 
 # ════════════════════════════════════════════════════════════════════════════
