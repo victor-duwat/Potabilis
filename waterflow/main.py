@@ -20,4 +20,7 @@ app = create_app()
 if __name__ == "__main__":
     port  = int(os.getenv("PORT", 8080))
     debug = os.getenv("FLASK_ENV", "production") == "development"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    # use_reloader=False : main.py fait os.chdir() vers son dossier, ce qui casse
+    # le redémarrage du reloader Flask (chemin relatif résolu en double). On garde
+    # le mode debug (pages d'erreur détaillées) sans le rechargement automatique.
+    app.run(host="0.0.0.0", port=port, debug=debug, use_reloader=False)
