@@ -2,9 +2,9 @@ name: Waterflow 2 — CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [master, main, develop]
   pull_request:
-    branches: [main]
+    branches: [master, main]
 
 env:
   IMAGE_NAME: waterflow2
@@ -32,9 +32,9 @@ jobs:
 
       - name: Tests unitaires + couverture
         env:
-          DATABASE_URL:      sqlite:///:memory:
-          MLFLOW_URI:        mock
-          SCALER_PATH:       mock
+          DATABASE_URL: "sqlite:///:memory:"
+          MLFLOW_URI: "mock"
+          SCALER_PATH: "mock"
           OCR_SPACE_API_KEY: ""
           ANTHROPIC_API_KEY: ""
         run: |
