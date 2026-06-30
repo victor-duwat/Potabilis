@@ -7,7 +7,11 @@ import secrets
 import hashlib
 import logging
 import click
+from dotenv import load_dotenv
 from flask import Flask, jsonify
+
+# Charge .env dès que le module est importé, quel que soit le point d'entrée
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 from flasgger import Swagger
 from prometheus_flask_exporter import PrometheusMetrics
 from api.models.db     import init_db, purge_old_logs
