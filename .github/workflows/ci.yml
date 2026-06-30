@@ -5,6 +5,9 @@ on:
     branches: [master, main, develop]
   pull_request:
     branches: [master, main]
+  # Build de l'image + déploiement : déclenchés manuellement (pas à chaque push),
+  # afin de ne pas faire échouer la CI quand l'infra de déploiement n'est pas configurée.
+  workflow_dispatch:
 
 env:
   IMAGE_NAME: waterflow2
@@ -59,7 +62,10 @@ jobs:
     name: Build Docker image
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
 
@@ -86,7 +92,8 @@ jobs:
       - name: Build & Push
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./waterflow
+          file: ./waterflow/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -98,11 +105,16 @@ jobs:
     name: Déploiement production
     needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch'
     environment: production
 
     steps:
+      - name: Vérifier la configuration de déploiement
+        id: cfg
+        run: echo "ready=${{ secrets.DEPLOY_HOST != '' }}" >> "$GITHUB_OUTPUT"
+
       - name: SSH deploy
+        if: steps.cfg.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host:     ${{ secrets.DEPLOY_HOST }}
