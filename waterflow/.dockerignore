@@ -1,0 +1,20 @@
+# Artefacts régénérables / non nécessaires dans l'image
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Bases et artefacts MLflow locaux (le conteneur (ré)enregistre le modèle dans /data)
+mlflow_water.db
+mlflow_artifacts/
+mlruns/
+waterflow2.db
+
+# Données volumineuses non requises au runtime (le modèle est déjà entraîné)
+water_potability.csv
+water_potability_clean.csv
+
+# Divers
+.git/
+.env
+*.log

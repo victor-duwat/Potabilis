@@ -14,18 +14,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Code applicatif
 COPY . .
 
-# Répertoire pour artefacts ML
-RUN mkdir -p model_artifacts
+# Répertoires ML + données (le volume /data héritera de ce propriétaire)
+RUN mkdir -p model_artifacts /data && chmod +x docker-entrypoint.sh
 
-# Utilisateur non-root
-RUN useradd -m -u 1000 waterflow && chown -R waterflow /app
+# Utilisateur non-root (propriétaire de /app ET de /data pour l'écriture SQLite/MLflow)
+RUN useradd -m -u 1000 waterflow && chown -R waterflow /app /data
 USER waterflow
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=5 \
   CMD curl -f http://localhost:8080/health || exit 1
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", \
-     "--timeout", "120", "--access-logfile", "-", "--error-logfile", "-", \
-     "main:app"]
+# L'entrypoint enregistre le modèle (si besoin) puis lance Gunicorn
+ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]

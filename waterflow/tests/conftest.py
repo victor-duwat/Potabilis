@@ -15,14 +15,7 @@ os.environ.setdefault("MLFLOW_URI",        "mock")
 os.environ.setdefault("SCALER_PATH",       "mock")
 os.environ.setdefault("OCR_SPACE_API_KEY", "")
 os.environ.setdefault("ANTHROPIC_API_KEY", "")
-# La suite enchaîne volontairement de nombreuses requêtes sur des routes
-# limitées (ex. /ingest/manual 20/min) : on désactive le rate limiting en test.
 os.environ.setdefault("RATELIMIT_ENABLED", "false")
 
-# Jeu de tokens experts unique pour toute la suite : un token par fichier de test.
-os.environ["EXPERT_TOKENS"] = (
-    "admin:token-admin-bug:exploit,"
-    "admin:token-admin-e2e:exploit,"
-    "admin:token-admin-fonc:exploit,"
-    "admin:token-admin-noreg:exploit"
-)
+# NB : EXPERT_TOKENS (tokens de tous les fichiers, dont alice/bob et admin-*) est
+# défini une seule fois dans le conftest.py RACINE, pour éviter tout écrasement.

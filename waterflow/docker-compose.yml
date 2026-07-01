@@ -1,11 +1,13 @@
-version: "3.9"
-
 services:
   # ── Application Waterflow 2 ─────────────────────────────────────────────────
   waterflow2:
     build: .
     ports:
       - "8080:8080"
+    # Charge les secrets locaux (EXPERT_TOKENS, clés OCR) depuis .env si présent.
+    # Les variables du bloc `environment:` ci-dessous restent prioritaires.
+    env_file:
+      - .env
     environment:
       # ── Obligatoires ───────────────────────────────────────────
       - DATABASE_URL=sqlite:////data/waterflow2.db
@@ -51,8 +53,6 @@ services:
     image: prom/alertmanager:v0.27.0
     ports:
       - "9093:9093"
-    environment:
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/PLACEHOLDER}
     volumes:
       - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     command:

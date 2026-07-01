@@ -22,8 +22,7 @@ os.environ.setdefault("MLFLOW_URI",        "mock")
 os.environ.setdefault("SCALER_PATH",       "mock")
 os.environ.setdefault("OCR_SPACE_API_KEY", "")
 os.environ.setdefault("ANTHROPIC_API_KEY", "")
-# Deux experts de test : un analyste, un exploit
-os.environ["EXPERT_TOKENS"] = "alice:token-alice:analyste,bob:token-bob:exploit"
+# EXPERT_TOKENS est défini globalement dans le conftest.py racine (alice + bob présents)
 
 # ── Mocks ML ────────────────────────────────────────────────────────────────
 _mock_model  = MagicMock()
