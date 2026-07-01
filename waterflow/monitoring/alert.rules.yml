@@ -1,0 +1,63 @@
+# =====================================================================
+# Règles d'alerte Prometheus — Waterflow 2 (compétence C20)
+# Chaque alerte a un SEUIL, une DURÉE de confirmation (for:) et une sévérité.
+# Elles sont visibles dans Prometheus (/alerts) et routées par Alertmanager.
+# =====================================================================
+groups:
+  - name: waterflow_api
+    rules:
+      # ── 1. Taux d'erreur 5xx élevé ────────────────────────────────
+      - alert: TauxErreur5xxEleve
+        expr: |
+          sum(rate(flask_http_request_total{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(flask_http_request_total[5m])), 0.001) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux d'erreurs 5xx > 5% pendant 2 min"
+          description: "L'API renvoie trop d'erreurs serveur — investiguer les logs applicatifs."
+
+      # ── 2. Latence p95 dégradée ───────────────────────────────────
+      - alert: LatenceP95Elevee
+        expr: |
+          histogram_quantile(0.95, sum(rate(flask_http_request_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence p95 > 2 s pendant 3 min"
+          description: "Le temps de réponse se dégrade (95e centile au-dessus de 2 s)."
+
+      # ── 3. Pic d'erreurs d'authentification (sécurité) ────────────
+      - alert: PicAuthEchouees
+        expr: sum(rate(flask_http_request_total{status="401"}[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Plus d'1 échec d'authentification/s pendant 2 min"
+          description: "Possible tentative d'accès non autorisé (clé API/token invalides)."
+
+      # ── 4. API injoignable ────────────────────────────────────────
+      - alert: ApiInjoignable
+        expr: up{job="waterflow2"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "L'API Waterflow 2 ne répond plus au scrape Prometheus"
+          description: "Le service est down ou l'endpoint /metrics est inaccessible."
+
+  - name: waterflow_ocr
+    rules:
+      # ── 5. Échecs d'ingestion OCR ─────────────────────────────────
+      - alert: EchecsOCR
+        expr: |
+          sum(rate(flask_http_request_total{path=~"/ingest/ocr.*", status=~"5..|503"}[10m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Échecs répétés sur les routes OCR"
+          description: "Service OCR.space possiblement indisponible — vérifier le fallback Claude Vision."

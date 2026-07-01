@@ -170,4 +170,24 @@
 
 ---
 
+## Objectifs d'accessibilité (transverses à toutes les US d'interface)
+
+**Standard retenu : WCAG 2.1 niveau AA** (et son équivalent français **RGAA**). Ces objectifs sont
+intégrés comme **critères d'acceptation** des user stories qui produisent une interface (US-03, US-07, US-08, US-09, US-10).
+
+| Réf. WCAG/RGAA | Objectif d'accessibilité | Critère d'acceptation vérifiable |
+|---|---|---|
+| 1.4.3 (AA) | Contraste suffisant | Ratio texte/fond ≥ 4.5:1 sur toutes les vues |
+| 1.4.1 | Ne pas véhiculer l'information par la seule couleur | Le résultat de potabilité affiche un **libellé texte** (« Potable » / « Non potable »), pas seulement une pastille colorée |
+| 2.1.1 | Accessibilité au clavier | Toutes les actions (connexion, filtres, pagination) sont réalisables au **clavier**, focus visible |
+| 1.3.1 | Structure de l'information | Tableaux avec en-têtes `<th>`, champs de formulaire avec `<label>` associés |
+| 2.4.2 | Titre de page explicite | Chaque vue a un titre clair et unique |
+| 4.1.2 | Nom / rôle / valeur | Composants interactifs (onglets, boutons) exposent leur rôle via ARIA |
+
+> **Note sur la documentation développeur :** la doc technique en format texte (`.md`, `.yaml`) n'est pas
+> soumise aux règles d'accessibilité (format standard des développeurs). Les maquettes et le mini-CDC
+> figurent dans [`maquettes.md`](maquettes.md).
+
+---
+
 *User Stories Waterflow 2 — B3 IA 2025*

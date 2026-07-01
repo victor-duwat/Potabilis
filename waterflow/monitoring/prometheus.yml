@@ -2,6 +2,16 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Règles d'alerte (seuils) — compétence C20
+rule_files:
+  - "/etc/prometheus/alert.rules.yml"
+
+# Routage des alertes vers Alertmanager (canal e-mail / Slack)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: "waterflow2"
     static_configs:

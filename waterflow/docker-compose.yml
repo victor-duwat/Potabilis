@@ -35,6 +35,7 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml:ro
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -44,6 +45,21 @@ services:
     restart: unless-stopped
     depends_on:
       - waterflow2
+
+  # ── Alertmanager (routage des alertes vers Slack / e-mail) ──────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    ports:
+      - "9093:9093"
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/PLACEHOLDER}
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    restart: unless-stopped
+    depends_on:
+      - prometheus
 
   # ── Grafana ─────────────────────────────────────────────────────────────────
   grafana:

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="500" viewBox="0 0 820 500" font-family="Arial, sans-serif">
+  <rect width="820" height="500" fill="#f6f8fa"/>
+  <!-- Barre supérieure -->
+  <rect x="0" y="0" width="820" height="44" fill="#1f3a5f"/>
+  <text x="16" y="28" fill="#ffffff" font-size="15" font-weight="bold">Waterflow 2 — Espace Expert</text>
+  <text x="700" y="28" fill="#cbd5e1" font-size="12">alice (analyste) ⌄</text>
+
+  <!-- Onglets -->
+  <rect x="16" y="56" width="110" height="30" rx="6" fill="#2563eb"/>
+  <text x="71" y="76" text-anchor="middle" font-size="12" fill="#ffffff">Dashboard</text>
+  <rect x="132" y="56" width="110" height="30" rx="6" fill="#e2e8f0"/>
+  <text x="187" y="76" text-anchor="middle" font-size="12" fill="#334155">Prélèvements</text>
+  <rect x="248" y="56" width="90" height="30" rx="6" fill="#e2e8f0"/>
+  <text x="293" y="76" text-anchor="middle" font-size="12" fill="#334155">Clients</text>
+
+  <!-- KPI cards -->
+  <g>
+    <rect x="16" y="100" width="185" height="80" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="30" y="126" font-size="11" fill="#64748b">Total prélèvements</text>
+    <text x="30" y="158" font-size="26" font-weight="bold" fill="#1f3a5f">1 248</text>
+
+    <rect x="212" y="100" width="185" height="80" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="226" y="126" font-size="11" fill="#64748b">Taux de potabilité</text>
+    <text x="226" y="158" font-size="26" font-weight="bold" fill="#0f7b3f">61 %</text>
+
+    <rect x="408" y="100" width="185" height="80" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="422" y="126" font-size="11" fill="#64748b">Clients actifs</text>
+    <text x="422" y="158" font-size="26" font-weight="bold" fill="#1f3a5f">37</text>
+
+    <rect x="604" y="100" width="200" height="80" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
+    <text x="618" y="126" font-size="11" fill="#64748b">Prédictions</text>
+    <text x="618" y="158" font-size="26" font-weight="bold" fill="#1f3a5f">1 190</text>
+  </g>
+
+  <!-- Filtres -->
+  <rect x="16" y="196" width="788" height="44" rx="8" fill="#eef2f7" stroke="#cbd5e1"/>
+  <text x="30" y="222" font-size="11" fill="#475569">Filtres :</text>
+  <rect x="86" y="206" width="130" height="24" rx="5" fill="#ffffff" stroke="#cbd5e1"/><text x="96" y="222" font-size="10" fill="#94a3b8">Client ▾</text>
+  <rect x="226" y="206" width="130" height="24" rx="5" fill="#ffffff" stroke="#cbd5e1"/><text x="236" y="222" font-size="10" fill="#94a3b8">Source (OCR/manuel) ▾</text>
+  <rect x="366" y="206" width="110" height="24" rx="5" fill="#ffffff" stroke="#cbd5e1"/><text x="376" y="222" font-size="10" fill="#94a3b8">Date début</text>
+  <rect x="486" y="206" width="110" height="24" rx="5" fill="#ffffff" stroke="#cbd5e1"/><text x="496" y="222" font-size="10" fill="#94a3b8">Date fin</text>
+
+  <!-- Tableau prélèvements -->
+  <rect x="16" y="256" width="788" height="30" fill="#1f3a5f"/>
+  <text x="30" y="276" font-size="11" fill="#ffffff">Date</text>
+  <text x="150" y="276" font-size="11" fill="#ffffff">Client</text>
+  <text x="330" y="276" font-size="11" fill="#ffffff">Source</text>
+  <text x="450" y="276" font-size="11" fill="#ffffff">Résultat</text>
+  <text x="600" y="276" font-size="11" fill="#ffffff">Probabilité</text>
+
+  <g font-size="11" fill="#334155">
+    <rect x="16" y="286" width="788" height="28" fill="#ffffff" stroke="#eef2f7"/>
+    <text x="30" y="304">18/03/2025</text><text x="150" y="304">Mairie de Marseille</text><text x="330" y="304">OCR</text>
+    <text x="450" y="304" fill="#0f7b3f">Potable</text><text x="600" y="304">0.86</text>
+    <rect x="16" y="314" width="788" height="28" fill="#f6f8fa" stroke="#eef2f7"/>
+    <text x="30" y="332">17/03/2025</text><text x="150" y="332">Syndicat des Eaux du Var</text><text x="330" y="332">Manuel</text>
+    <text x="450" y="332" fill="#b3261e">Non potable</text><text x="600" y="332">0.23</text>
+    <rect x="16" y="342" width="788" height="28" fill="#ffffff" stroke="#eef2f7"/>
+    <text x="30" y="360">16/03/2025</text><text x="150" y="360">Commune de Nice</text><text x="330" y="360">OCR</text>
+    <text x="450" y="360" fill="#0f7b3f">Potable</text><text x="600" y="360">0.72</text>
+  </g>
+
+  <!-- Note accessibilité -->
+  <text x="16" y="404" font-size="9.5" fill="#64748b">Accessibilité : résultat indiqué par le texte (pas seulement la couleur) · en-têtes de tableau · contraste AA · focus clavier visible.</text>
+  <text x="16" y="484" font-size="10" fill="#94a3b8">Maquette (wireframe) — Dashboard analyste · Waterflow 2</text>
+</svg>
