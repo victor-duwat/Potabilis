@@ -29,20 +29,62 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 HUBEAU = "https://hubeau.eaufrance.fr/api/v1/qualite_eau_potable/resultats_dis"
 
-# Communes réelles (code INSEE, nom, adresse mairie)
+# Communes réelles (code INSEE, nom, adresse mairie). Un code sans données
+# disponibles sur Hub'Eau est automatiquement ignoré (voir main()).
 COMMUNES = [
+    # ── PACA / Sud-Est ──
     ("06088", "Nice",               "Place Pierre Gautier, 06300 Nice"),
     ("13055", "Marseille",          "Quai du Port, 13002 Marseille"),
     ("13001", "Aix-en-Provence",    "Place de l'Hôtel de Ville, 13100 Aix-en-Provence"),
     ("83137", "Toulon",             "Avenue de la République, 83000 Toulon"),
     ("84007", "Avignon",            "Place de l'Horloge, 84000 Avignon"),
     ("06029", "Cannes",             "Place Bernard Cornut-Gentille, 06400 Cannes"),
-    ("05061", "Gap",                "3 Rue Colonel Roux, 05000 Gap"),
     ("83061", "Fréjus",             "Place Formigé, 83600 Fréjus"),
     ("13103", "Salon-de-Provence",  "Place de l'Hôtel de Ville, 13300 Salon-de-Provence"),
     ("13004", "Arles",              "Place de la République, 13200 Arles"),
     ("04070", "Digne-les-Bains",    "1 Boulevard Gassendi, 04000 Digne-les-Bains"),
     ("83069", "Hyères",             "Avenue Joseph Clotis, 83400 Hyères"),
+    ("06004", "Antibes",            "Place de l'Hôtel de Ville, 06600 Antibes"),
+    # ── Grandes métropoles ──
+    ("75056", "Paris",              "Place de l'Hôtel de Ville, 75004 Paris"),
+    ("69123", "Lyon",               "Place de la Comédie, 69001 Lyon"),
+    ("31555", "Toulouse",           "Place du Capitole, 31000 Toulouse"),
+    ("44109", "Nantes",             "2 Rue de l'Hôtel de Ville, 44000 Nantes"),
+    ("34172", "Montpellier",        "1 Place Georges Frêche, 34000 Montpellier"),
+    ("67482", "Strasbourg",         "9 Rue Brûlée, 67000 Strasbourg"),
+    ("33063", "Bordeaux",           "Place Pey Berland, 33000 Bordeaux"),
+    ("59350", "Lille",              "Place Augustin Laurent, 59000 Lille"),
+    ("35238", "Rennes",             "Place de la Mairie, 35000 Rennes"),
+    ("51454", "Reims",              "9 Place de l'Hôtel de Ville, 51100 Reims"),
+    ("42218", "Saint-Étienne",      "Place de l'Hôtel de Ville, 42000 Saint-Étienne"),
+    ("38185", "Grenoble",           "11 Boulevard Jean Pain, 38000 Grenoble"),
+    ("21231", "Dijon",              "Place de la Libération, 21000 Dijon"),
+    ("49007", "Angers",             "Boulevard de la Résistance, 49000 Angers"),
+    ("30189", "Nîmes",              "Place de l'Hôtel de Ville, 30000 Nîmes"),
+    ("63113", "Clermont-Ferrand",   "10 Rue Philippe Marcombes, 63000 Clermont-Ferrand"),
+    ("72181", "Le Mans",            "Place Saint-Pierre, 72000 Le Mans"),
+    ("29019", "Brest",              "2 Rue Frézier, 29200 Brest"),
+    ("37261", "Tours",              "1-3 Rue des Minimes, 37000 Tours"),
+    ("80021", "Amiens",             "Place de l'Hôtel de Ville, 80000 Amiens"),
+    ("87085", "Limoges",            "Place Léon Betoulle, 87000 Limoges"),
+    ("66136", "Perpignan",          "Place de la Loge, 66000 Perpignan"),
+    ("25056", "Besançon",           "2 Rue Mégevand, 25000 Besançon"),
+    ("57463", "Metz",               "1 Place d'Armes, 57000 Metz"),
+    ("45234", "Orléans",            "Place de l'Étape, 45000 Orléans"),
+    ("76540", "Rouen",              "Place du Général de Gaulle, 76000 Rouen"),
+    ("68224", "Mulhouse",           "2 Rue Pierre et Marie Curie, 68100 Mulhouse"),
+    ("14118", "Caen",               "Esplanade Jean-Marie Louvel, 14000 Caen"),
+    ("54395", "Nancy",              "Place Stanislas, 54000 Nancy"),
+    ("86194", "Poitiers",           "15 Place du Maréchal Leclerc, 86000 Poitiers"),
+    ("64445", "Pau",                "Place Royale, 64000 Pau"),
+    ("68066", "Colmar",             "1 Rue de la Mairie, 68000 Colmar"),
+    ("29232", "Quimper",            "44 Place Saint-Corentin, 29000 Quimper"),
+    ("56121", "Lorient",            "Place Yves Le Coz, 56100 Lorient"),
+    ("73065", "Chambéry",           "Place de l'Hôtel de Ville, 73000 Chambéry"),
+    ("26362", "Valence",            "1 Place de la Liberté, 26000 Valence"),
+    ("64102", "Bayonne",            "1 Avenue du Maréchal Leclerc, 64100 Bayonne"),
+    ("87154", "Saint-Junien",       "Place Auguste Roche, 87200 Saint-Junien"),
+    ("17300", "La Rochelle",        "Place de l'Hôtel de Ville, 17000 La Rochelle"),
 ]
 
 # Mapping : feature du modèle -> motif(s) recherché(s) dans le libellé (normalisé) du paramètre
@@ -123,14 +165,18 @@ def main():
         if res["conclusion"]:
             c = _norm(res["conclusion"])
             potable = 1 if ("conforme" in c and "non conforme" not in c) else 0
+        dispo = [f for f in FEATURES if v.get(f)]
+        if not dispo:
+            # Aucune donnée réelle disponible (code INSEE sans mesures) -> on ignore
+            print(f"  - {nom:20s} : aucune donnee disponible sur Hub'Eau, ignoree")
+            continue
         row = {"code_insee": code, "commune": nom, "date_analyse": res["date"],
                "conclusion_ars": res["conclusion"], "potable_ars": potable}
         for feat in FEATURES:
             row[feat] = v.get(feat, (None,))[0]
         rows.append((row, adresse))
-        dispo = [f for f in FEATURES if v.get(f)]
         etat = "conforme" if potable == 1 else ("non conforme" if potable == 0 else "n/c")
-        print(f"  + {nom:20s} : {len(dispo)} parametres reels {dispo} | ARS: {etat}")
+        print(f"  + {nom:20s} : {len(dispo)} parametres reels | ARS: {etat}")
 
     cols = ["code_insee", "commune", "date_analyse", "conclusion_ars", "potable_ars"] + FEATURES
     with open(out_csv, "w", newline="", encoding="utf-8") as f:
