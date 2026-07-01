@@ -225,6 +225,16 @@
                         <div id="kpi-rec" class="space-y-1"></div>
                     </div>
                 </div>
+                <!-- Communes à surveiller (non 100% potables) -->
+                <div class="bg-amber-950/30 border border-amber-700/60 rounded-2xl p-5 fade-in">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-amber-300">⚠️ Communes à surveiller
+                            <span class="text-xs font-normal text-amber-500/80 ml-1">(au moins un prélèvement non conforme)</span>
+                        </h3>
+                        <span id="kpi-risque-count" class="text-xs font-semibold bg-amber-800/50 text-amber-200 px-2.5 py-1 rounded-full">—</span>
+                    </div>
+                    <div id="kpi-risque" class="space-y-1"></div>
+                </div>
             </div>
 
             <!-- Tab: Prélèvements -->
@@ -865,6 +875,27 @@ async function loadDashboard() {
                     ${potBadge(p.prediction?.potable)}
                 </div>`).join('')
             : '<p class="text-slate-500 text-sm text-center py-4">Aucun prélèvement.</p>';
+
+        // Communes à surveiller (potabilité < 100%)
+        const risque = d.clients_a_risque || [];
+        const cntEl = document.getElementById('kpi-risque-count');
+        if (cntEl) cntEl.textContent = `${risque.length} commune${risque.length > 1 ? 's' : ''}`;
+        document.getElementById('kpi-risque').innerHTML = risque.length
+            ? risque.map(c => {
+                const pct = (c.potable_rate * 100).toFixed(0);
+                return `
+                <div class="flex items-center justify-between py-2 border-b border-amber-800/30 last:border-0 gap-2">
+                    <div class="min-w-0">
+                        <span class="text-sm text-amber-100 font-medium">${c.denomination || c.id_client}</span>
+                        <span class="text-xs text-amber-500/70 ml-1.5">${c.id_client}</span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="text-xs text-red-300 font-semibold">${c.non_potables}/${c.total} non conformes</span>
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full ${pct >= 90 ? 'bg-amber-800/50 text-amber-200' : 'bg-red-800/50 text-red-200'}">${pct}% potable</span>
+                    </div>
+                </div>`;
+              }).join('')
+            : '<p class="text-emerald-400/80 text-sm text-center py-4">✓ Toutes les communes sont à 100% de conformité.</p>';
     } catch(e) {}
 }
 

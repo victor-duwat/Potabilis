@@ -833,6 +833,32 @@ def analyste_dashboard():
                  .order_by(Prelevement.created_at.desc())
                  .limit(15).all())
 
+    # ── Communes non 100 % potables (au moins un prélèvement non conforme) ──────
+    par_client = (
+        db.query(
+            Client.id_client,
+            Client.denomination,
+            func.count(Prediction.id).label("total"),
+            func.sum(Prediction.potable).label("potables"),
+        )
+        .join(Prelevement, Prelevement.client_id == Client.id)
+        .join(Prediction, Prediction.prelevement_id == Prelevement.id)
+        .group_by(Client.id, Client.id_client, Client.denomination)
+        .all()
+    )
+    clients_a_risque = []
+    for id_client, denom, total, potables in par_client:
+        potables = int(potables or 0)
+        if total and potables < total:
+            clients_a_risque.append({
+                "id_client":     id_client,
+                "denomination":  denom,
+                "total":         int(total),
+                "non_potables":  int(total) - potables,
+                "potable_rate":  round(potables / total, 4),
+            })
+    clients_a_risque.sort(key=lambda c: c["potable_rate"])
+
     log_audit("analyste_read_dashboard")
     return jsonify({
         "total_prelevements":  total_prevs,
@@ -854,6 +880,7 @@ def analyste_dashboard():
             "hardness":    round(avgs[4], 3) if avgs[4] else None,
         },
         "recents": [_prev_dict(p) for p in recents],
+        "clients_a_risque": clients_a_risque,
     })
 
 
