@@ -5,8 +5,9 @@
 extend-exclude = ["*.ipynb"]
 
 [lint.per-file-ignores]
-# Ces points d'entrée configurent l'environnement (os.chdir / load_dotenv)
-# AVANT d'importer l'application. L'ordre des imports est donc volontaire (E402).
-"app.py"             = ["E402"]
-"main.py"            = ["E402"]
-"setup_waterflow.py" = ["E402"]
+# Ces points d'entrée / scripts lisent la configuration (env, chemins) AVANT
+# d'importer des dépendances lourdes. L'ordre des imports est donc volontaire (E402).
+"app.py"                    = ["E402"]
+"main.py"                   = ["E402"]
+"setup_waterflow.py"        = ["E402"]
+"scripts/register_model.py" = ["E402"]
