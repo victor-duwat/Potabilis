@@ -158,4 +158,33 @@ clients JOIN prelevements JOIN mesures JOIN predictions
 
 ---
 
+## Extraction réelle implémentée — Hub'Eau (données officielles)
+
+En plus des sources ci-dessus, un extracteur réel est fourni :
+**`scripts/scrape_communes.py`** interroge le portail national officiel **Hub'Eau**
+(Ministère de la Santé / ARS — `hubeau.eaufrance.fr`) et récupère les **vraies analyses
+de qualité de l'eau potable** de communes françaises (Nice, Marseille, Aix, Toulon…).
+
+- **Source / type** : API REST publique officielle (données ouvertes).
+- **Données réelles extraites** : pH, conductivité, turbidité, sulfates, dureté,
+  carbone organique total, trihalométhanes (chloroforme), chloramines (chlore total),
+  ainsi que la **conclusion sanitaire officielle** de l'ARS (conforme / non conforme).
+- **Principe** : on ne conserve **que les paramètres réellement mesurés** ; les champs
+  absents restent vides (aucune valeur inventée).
+- **Sortie** : `data/communes_eau.csv` (jeu de données réel, versionné).
+- **Chargement optionnel** : `python scripts/scrape_communes.py --load-db` insère chaque
+  commune comme client, avec son analyse réelle et la conclusion ARS.
+
+```bash
+python scripts/scrape_communes.py            # -> data/communes_eau.csv
+python scripts/scrape_communes.py --load-db  # + insertion en base
+```
+
+> Remarque : le modèle XGBoost exige les 9 paramètres ; les fiches réelles n'en fournissant
+> que 8 (le résidu sec « Solids » n'est pas mesuré par l'ARS), ces prélèvements réels portent
+> la **conclusion officielle ARS** comme résultat, distincte d'une prédiction du modèle
+> (champ `model_version = "Conclusion sanitaire ARS"`).
+
+---
+
 *Document sources de données — Waterflow 2 B3 IA 2025*

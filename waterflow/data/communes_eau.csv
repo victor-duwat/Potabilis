@@ -1,0 +1,12 @@
+code_insee,commune,date_analyse,conclusion_ars,potable_ars,ph,Conductivity,Turbidity,Sulfate,Hardness,Organic_carbon,Trihalomethanes,Chloramines,Solids
+06088,Nice,2026-04-29T10:17:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,8.1,298.0,0.0,76.0,12.93,0.35,1.7,0.33,
+13055,Marseille,2026-04-28T09:56:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,8.06,493.0,0.0,78.0,22.22,0.68,8.17,0.0,
+13001,Aix-en-Provence,2026-04-21T08:54:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,8.0,430.0,0.1,26.8,17.3,0.97,3.4,0.0,
+83137,Toulon,2026-04-16T10:05:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,7.9,555.0,0.0,37.7,28.56,0.68,29.6,0.15,
+84007,Avignon,2026-04-30T12:46:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,7.5,610.0,0.36,94.0,28.45,0.28,0.38,0.0,
+06029,Cannes,2026-04-27T12:17:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,7.73,601.0,0.0,82.0,28.13,0.5,13.5,0.23,
+83061,Fréjus,2026-04-09T11:33:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,8.0,833.0,0.15,81.0,26.25,0.78,7.8,0.42,
+13103,Salon-de-Provence,2026-04-24T09:57:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,8.3,507.0,0.18,89.0,22.69,0.68,3.1,0.57,
+13004,Arles,2026-04-28T10:48:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,7.6,853.0,0.11,147.0,38.96,0.42,1.3,0.4,
+04070,Digne-les-Bains,2026-04-28T12:38:00Z,"Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés. Taux de chlore insuffisant. Une vérification de l'appareil de désinfection est nécessaire. Le taux de chlore libre à atteindre est de 0,3 mg/l en sortie production et de 0,1 mg/l en tout point du réseau.",1,7.8,368.0,0.32,40.9,17.83,0.32,4.85,0.05,
+83069,Hyères,2026-04-24T09:44:00Z,Eau d'alimentation conforme aux exigences de qualité en vigueur pour l'ensemble des paramètres mesurés.,1,7.5,814.0,0.15,96.0,40.58,0.56,0.17,0.23,
