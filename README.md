@@ -1,5 +1,7 @@
 # Waterflow 2 — Plateforme MLOps de qualité de l'eau
 
+[![CI/CD](https://github.com/victor-duwat/waterflow2/actions/workflows/ci.yml/badge.svg)](https://github.com/victor-duwat/waterflow2/actions/workflows/ci.yml)
+
 > Projet chef-d'œuvre — Titre RNCP 37827 « Développeur en Intelligence Artificielle ».
 > Plateforme de classification de la **potabilité de l'eau** pour des collectivités territoriales :
 > une **API Flask unique** à trois modules (Données, Prédiction ML, Ingestion OCR), une base
