@@ -8,9 +8,6 @@ mlruns/
 waterflow2.db
 *.db-journal
 
-# Données dérivées (régénérées par le notebook EDA)
-water_potability_clean.csv
-
 # Sorties de rapport générées localement
 dashboard_xgboost.png
 feature_importance.csv
