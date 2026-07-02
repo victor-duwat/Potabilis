@@ -885,6 +885,59 @@ def analyste_dashboard():
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# LABORATOIRE — test direct du modèle (analyste)
+# Permet de saisir des mesures et d'obtenir une prédiction SANS créer de
+# prélèvement (banc d'essai du modèle entraîné).
+# ════════════════════════════════════════════════════════════════════════════
+
+@bp.route("/analyste/predict-test", methods=["POST"])
+@require_expert(role="analyste")
+@timed
+def analyste_predict_test():
+    """Prédiction directe sur des mesures saisies, sans stockage en base."""
+    data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Corps JSON attendu."}), 400
+    try:
+        result = run_prediction(data)
+    except ValueError as e:
+        log_audit("analyste_predict_test", status_code=400, detail=str(e))
+        return jsonify({"error": str(e)}), 400
+    log_audit("analyste_predict_test")
+    return jsonify({"prediction": result})
+
+
+@bp.route("/analyste/model-info", methods=["GET"])
+@require_expert(role="analyste")
+def analyste_model_info():
+    """Métadonnées du modèle entraîné : version, features, métriques d'évaluation."""
+    import os
+    meta_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "model_artifacts", "metadata.json")
+    metrics, features, extra = {}, [], {}
+    try:
+        with open(meta_path, encoding="utf-8") as f:
+            meta = json.load(f)
+        metrics  = meta.get("metrics", {})
+        features = meta.get("features", [])
+        extra = {
+            "cv_mean":       meta.get("cv_mean"),
+            "cv_std":        meta.get("cv_std"),
+            "n_train_smote": meta.get("n_train_smote"),
+            "n_val":         meta.get("n_val"),
+        }
+    except (OSError, ValueError):
+        pass
+    return jsonify({
+        "model_version": MLFLOW_MODEL_URI,
+        "algorithme":    "XGBoost (gradient boosting)",
+        "features":      features,
+        "metrics":       metrics,
+        "extra":         extra,
+    })
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # RESPONSABLE D'EXPLOITATION
 # Supervision santé plateforme, journaux d'accès.
 # Authentification : Authorization: Bearer <token> (rôle exploit uniquement)

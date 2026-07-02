@@ -95,6 +95,10 @@
                     class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
                     📊 Dashboard
                 </button>
+                <button onclick="showTab('lab')" data-tab="lab"
+                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                    🧪 Laboratoire
+                </button>
                 <button onclick="showTab('prevs')" data-tab="prevs"
                     class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
                     🧪 Prélèvements
@@ -234,6 +238,32 @@
                         <span id="kpi-risque-count" class="text-xs font-semibold bg-amber-800/50 text-amber-200 px-2.5 py-1 rounded-full">—</span>
                     </div>
                     <div id="kpi-risque" class="space-y-1"></div>
+                </div>
+            </div>
+
+            <!-- Tab: Laboratoire (test du modèle) -->
+            <div id="tab-lab" class="hidden fade-in">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+                        <h2 class="font-semibold text-white mb-1">🧪 Tester le modèle d'IA</h2>
+                        <p class="text-xs text-slate-400 mb-4">Saisissez les 9 mesures physico-chimiques : le modèle entraîné prédit la potabilité. Rien n'est enregistré (banc d'essai).</p>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button onclick="labPreset('saine')" class="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-800/40 text-emerald-200 hover:bg-emerald-800/60">💧 Eau saine</button>
+                            <button onclick="labPreset('degradee')" class="text-xs px-2.5 py-1.5 rounded-lg bg-red-800/40 text-red-200 hover:bg-red-800/60">☣️ Eau dégradée</button>
+                            <button onclick="labPreset('random')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600">🎲 Aléatoire</button>
+                        </div>
+                        <div id="lab-fields" class="grid grid-cols-2 gap-3"></div>
+                        <button onclick="doPredictTest()" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors">Prédire la potabilité</button>
+                    </div>
+                    <div class="space-y-4">
+                        <div id="lab-result" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center justify-center min-h-[190px]">
+                            <p class="text-slate-500 text-sm text-center">Le résultat de la prédiction s'affichera ici.</p>
+                        </div>
+                        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+                            <h3 class="font-semibold text-white mb-3">Modèle entraîné</h3>
+                            <div id="lab-model" class="space-y-1 text-sm"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -627,7 +657,7 @@ function showApp() {
 }
 
 function showTab(tab) {
-    ['dash', 'prevs', 'clis', 'cliDash', 'api', 'audit', 'metrics'].forEach(t =>
+    ['dash', 'lab', 'prevs', 'clis', 'cliDash', 'api', 'audit', 'metrics'].forEach(t =>
         document.getElementById(`tab-${t}`)?.classList.add('hidden'));
     document.getElementById(`tab-${tab}`)?.classList.remove('hidden');
 
@@ -646,6 +676,7 @@ function showTab(tab) {
     });
 
     if (tab === 'dash')    loadDashboard();
+    if (tab === 'lab')     loadLab();
     if (tab === 'prevs')   loadAllPrevs();
     if (tab === 'clis')    loadClients();
     if (tab === 'cliDash') loadCliDashList();
@@ -897,6 +928,87 @@ async function loadDashboard() {
               }).join('')
             : '<p class="text-emerald-400/80 text-sm text-center py-4">✓ Toutes les communes sont à 100% de conformité.</p>';
     } catch(e) {}
+}
+
+// ════════════════════════════════════════
+// EXPERT — Laboratoire (test du modèle)
+// ════════════════════════════════════════
+const LAB_FEATURES = [
+    { k: 'ph',              l: 'pH',              u: '' },
+    { k: 'Hardness',        l: 'Dureté',          u: 'mg/L' },
+    { k: 'Solids',          l: 'Solides dissous', u: 'ppm' },
+    { k: 'Chloramines',     l: 'Chloramines',     u: 'ppm' },
+    { k: 'Sulfate',         l: 'Sulfates',        u: 'mg/L' },
+    { k: 'Conductivity',    l: 'Conductivité',    u: 'µS/cm' },
+    { k: 'Organic_carbon',  l: 'Carbone org.',    u: 'ppm' },
+    { k: 'Trihalomethanes', l: 'Trihalométhanes', u: 'µg/L' },
+    { k: 'Turbidity',       l: 'Turbidité',       u: 'NTU' },
+];
+// Exemples réels du jeu de données que le modèle classe clairement (démo)
+const LAB_PRESETS = {
+    saine:    { ph: 7.04, Hardness: 161.25, Solids: 23469.22, Chloramines: 8.39, Sulfate: 331.84, Conductivity: 448.79, Organic_carbon: 13.84, Trihalomethanes: 70.21, Turbidity: 3.6 },
+    degradee: { ph: 7.04, Hardness: 226.77, Solids: 39942.95, Chloramines: 8.59, Sulfate: 333.39, Conductivity: 538.62, Organic_carbon: 13.74, Trihalomethanes: 66.54, Turbidity: 4.86 },
+};
+function labFieldsHtml(vals) {
+    return LAB_FEATURES.map(f => `
+        <div>
+            <label class="block text-xs text-slate-400 mb-1">${f.l} ${f.u ? `<span class="text-slate-600">(${f.u})</span>` : ''}</label>
+            <input id="lab-${f.k}" type="number" step="any" value="${vals[f.k]}"
+                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+        </div>`).join('');
+}
+async function loadLab() {
+    if (!document.getElementById('lab-ph'))
+        document.getElementById('lab-fields').innerHTML = labFieldsHtml(LAB_PRESETS.saine);
+    try {
+        const m = await api('GET', '/analyste/model-info');
+        const met = m.metrics || {};
+        const fmtPct = v => v != null ? (v * 100).toFixed(1) + '%' : '—';
+        const rows = [
+            ['Algorithme',    m.algorithme || '—'],
+            ['Version',       m.model_version || '—'],
+            ['Accuracy',      fmtPct(met['Accuracy'])],
+            ['F1-score',      met['F1-Score'] != null ? met['F1-Score'].toFixed(3) : '—'],
+            ['ROC-AUC',       met['ROC-AUC'] != null ? met['ROC-AUC'].toFixed(3) : '—'],
+            ['ROC-AUC (validation croisée)', m.extra?.cv_mean != null ? m.extra.cv_mean.toFixed(3) : '—'],
+        ];
+        document.getElementById('lab-model').innerHTML = rows.map(([k, v]) => `
+            <div class="flex justify-between border-b border-slate-700/50 py-1.5 last:border-0">
+                <span class="text-slate-400">${k}</span><span class="text-slate-200 font-medium">${v}</span></div>`).join('');
+    } catch(e) {}
+}
+function labPreset(kind) {
+    let vals;
+    if (kind === 'random') {
+        vals = {};
+        LAB_FEATURES.forEach(f => { const b = LAB_PRESETS.saine[f.k]; vals[f.k] = +(b * (0.6 + Math.random() * 0.8)).toFixed(2); });
+    } else vals = LAB_PRESETS[kind];
+    LAB_FEATURES.forEach(f => { const el = document.getElementById('lab-' + f.k); if (el) el.value = vals[f.k]; });
+}
+async function doPredictTest() {
+    const body = {};
+    for (const f of LAB_FEATURES) body[f.k] = parseFloat(document.getElementById('lab-' + f.k).value);
+    const box = document.getElementById('lab-result');
+    box.innerHTML = spinnerHtml();
+    try {
+        const d = await api('POST', '/analyste/predict-test', body);
+        const p = d.prediction;
+        const pot = p.potable === 1;
+        const pct = (p.probability * 100).toFixed(1);
+        box.innerHTML = `
+            <div class="text-center w-full">
+                <div class="text-5xl mb-2">${pot ? '💧' : '⚠️'}</div>
+                <div class="text-2xl font-bold ${pot ? 'text-emerald-400' : 'text-red-400'}">${p.label}</div>
+                <div class="mt-5">
+                    <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Probabilité de potabilité</span><span class="font-semibold">${pct}%</span></div>
+                    <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
+                        <div class="h-3 rounded-full ${pot ? 'bg-emerald-500' : 'bg-red-500'}" style="width:${pct}%"></div>
+                    </div>
+                </div>
+            </div>`;
+    } catch(e) {
+        box.innerHTML = `<p class="text-red-400 text-sm text-center">${e.error || 'Erreur de prédiction'}</p>`;
+    }
 }
 
 // ════════════════════════════════════════
