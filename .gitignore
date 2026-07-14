@@ -7,6 +7,9 @@
 pdf/
 *.pdf
 
+# Second projet (Blocs E1/E2) — dépôt Git distinct, ne PAS versionner ici
+sparkle-movie/
+
 # Configuration locale Claude Code
 .claude/
 
