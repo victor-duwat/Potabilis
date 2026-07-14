@@ -5,20 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Waterflow 2 — Potabilité</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      // ─── Direction artistique : « Graphite chaud + Teal » ───────────────────
+      // On remappe les échelles Tailwind « slate » (neutres) et « blue » (accent
+      // primaire) : tous les composants — y compris ceux générés en JS — adoptent
+      // la nouvelle identité sans renommer une seule classe.
+      tailwind.config = {
+        theme: { extend: {
+          colors: {
+            slate: {
+              50:'#f6f5f3', 100:'#e9e6e2', 200:'#d5d0ca', 300:'#b4aa9c',
+              400:'#8c8378', 500:'#6a625a', 600:'#48423c', 700:'#2e2a26',
+              800:'#1d1a17', 900:'#141210', 950:'#0d0b0a',
+            },
+            blue: {   // accent primaire -> teal
+              200:'#99f6e4', 300:'#5eead4', 400:'#2dd4bf', 500:'#0d9488',
+              600:'#0f766e', 700:'#115e59', 800:'#124f48', 900:'#103c39', 950:'#082f2c',
+            },
+          },
+          fontFamily: { sans: ['Sora','Segoe UI','system-ui','sans-serif'] },
+        }},
+      };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
-        *, body { font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; }
+        *, body { font-family: 'Sora', 'Segoe UI', system-ui, sans-serif; }
+        h1, h2, h3, .font-display { font-family: 'Space Grotesk', 'Sora', sans-serif; letter-spacing: -0.015em; }
+        body {
+            background-color: #0d0b0a;
+            background-image:
+                radial-gradient(72% 55% at 50% -12%, rgba(20,184,166,0.13), transparent 72%),
+                radial-gradient(40% 40% at 100% 0%, rgba(13,148,136,0.07), transparent 70%);
+            background-repeat: no-repeat;
+        }
         .spin { animation: _spin .7s linear infinite; }
         @keyframes _spin { to { transform: rotate(360deg); } }
-        .fade-in { animation: _fade .2s ease; }
-        @keyframes _fade { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .fade-in { animation: _fade .25s ease; }
+        @keyframes _fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1d1a17; }
+        ::-webkit-scrollbar-thumb { background: #48423c; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #5c554d; }
         input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
     </style>
 </head>
-<body class="bg-[#0f172a] text-slate-200 min-h-screen">
+<body class="bg-slate-950 text-slate-200 min-h-screen">
 
 <!-- ═══════════════════ MODAL ═══════════════════ -->
 <div id="modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -37,9 +68,9 @@
 <div id="pg-login" class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-sm fade-in">
         <div class="text-center mb-8">
-            <div class="text-5xl mb-3">💧</div>
-            <h1 class="text-2xl font-bold text-white">Waterflow 2</h1>
-            <p class="text-slate-500 text-sm mt-1">Plateforme d'analyse de potabilité</p>
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 text-4xl bg-gradient-to-br from-blue-500/20 to-blue-700/10 ring-1 ring-blue-500/30 shadow-lg shadow-blue-950/50">💧</div>
+            <h1 class="text-2xl font-bold text-white tracking-tight">Waterflow<span class="text-blue-400"> 2</span></h1>
+            <p class="text-slate-500 text-sm mt-1 uppercase tracking-[0.2em] text-xs">Analyse de potabilité</p>
         </div>
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
             <div class="flex bg-slate-900/60 rounded-xl p-1 mb-5">
@@ -55,13 +86,13 @@
             <div id="ls-client">
                 <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Clé API</label>
                 <input id="inp-key" type="password" placeholder="Collez votre X-API-Key…"
-                    class="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                     onkeydown="if(event.key==='Enter')doLogin()">
             </div>
             <div id="ls-expert" class="hidden">
                 <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Token Bearer</label>
                 <input id="inp-tok" type="password" placeholder="Collez votre token expert…"
-                    class="w-full bg-[#0f172a] border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                     onkeydown="if(event.key==='Enter')doLogin()">
             </div>
             <div id="login-err" class="hidden mt-3 bg-red-900/40 border border-red-800 text-red-300 rounded-lg px-3 py-2 text-sm"></div>
@@ -275,13 +306,13 @@
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Client</label>
                             <input id="f-client" type="text" placeholder="COMM-042…"
-                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                                 onkeydown="if(event.key==='Enter')loadAllPrevs()">
                         </div>
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Source</label>
                             <select id="f-source"
-                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
                                 <option value="">Toutes</option>
                                 <option value="manual">Manuel</option>
                                 <option value="ocr">OCR</option>
@@ -290,12 +321,12 @@
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Date début</label>
                             <input id="f-date-from" type="date"
-                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]">
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]">
                         </div>
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Date fin</label>
                             <input id="f-date-to" type="date"
-                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]">
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]">
                         </div>
                     </div>
                     <div class="flex items-center gap-2 mt-3">
@@ -332,17 +363,17 @@
                             <div>
                                 <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Identifiant métier</label>
                                 <input id="nc-id" type="text" placeholder="COMM-042"
-                                    class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
                             </div>
                             <div>
                                 <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Dénomination</label>
                                 <input id="nc-den" type="text" placeholder="Commune de Bordeaux"
-                                    class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
                             </div>
                             <div>
                                 <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Adresse</label>
                                 <input id="nc-adr" type="text" placeholder="1 Place de la Mairie…"
-                                    class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
                             </div>
                         </div>
                         <button onclick="createClient()"
@@ -365,7 +396,7 @@
                         </div>
                         <input id="cd-search" type="text" placeholder="Rechercher…"
                             oninput="filterCliList(this.value)"
-                            class="mx-3 mt-3 mb-2 bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                            class="mx-3 mt-3 mb-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
                         <div id="cd-list" class="flex-1 overflow-y-auto"></div>
                     </div>
 
@@ -446,7 +477,7 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Type acteur</label>
-                            <select id="aud-type" class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
+                            <select id="aud-type" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
                                 <option value="">Tous</option>
                                 <option value="client">Client</option>
                                 <option value="expert">Expert</option>
@@ -455,12 +486,12 @@
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Acteur (ID)</label>
                             <input id="aud-actor" type="text" placeholder="CLIENT-001…"
-                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
                         </div>
                         <div>
                             <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Action</label>
                             <input id="aud-action" type="text" placeholder="auth_failed…"
-                                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
                                 onkeydown="if(event.key==='Enter')loadAudit()">
                         </div>
                         <div class="flex items-end">
@@ -772,7 +803,7 @@ function buildManualForm() {
         <div>
             <label class="text-xs font-semibold text-slate-500 block mb-1">${f.l}</label>
             <input id="mf-${f.k}" type="number" step="any" placeholder="${f.ph}"
-                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
             ${f.hint ? `<p class="text-[10px] text-slate-600 mt-0.5">${f.hint}</p>` : ''}
         </div>
     `).join('');
@@ -954,7 +985,7 @@ function labFieldsHtml(vals) {
         <div>
             <label class="block text-xs text-slate-400 mb-1">${f.l} ${f.u ? `<span class="text-slate-600">(${f.u})</span>` : ''}</label>
             <input id="lab-${f.k}" type="number" step="any" value="${vals[f.k]}"
-                class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
         </div>`).join('');
 }
 async function loadLab() {
@@ -1116,7 +1147,7 @@ async function genKey(clientId, clientLabel) {
         openModal(
             `🔑 Clé API — ${d.id_client}`,
             '⚠ Copiez cette clé maintenant. Elle ne sera plus jamais affichée.',
-            `<div class="bg-[#0f172a] border border-slate-700 rounded-xl p-4 font-mono text-sm text-green-300 break-all select-all leading-relaxed">
+            `<div class="bg-slate-950 border border-slate-700 rounded-xl p-4 font-mono text-sm text-green-300 break-all select-all leading-relaxed">
                 ${d.api_key}
             </div>
             <button id="copy-btn"
@@ -1461,7 +1492,7 @@ function renderEndpointCard({ path, method, op }, spec) {
                     <div class="flex items-center gap-3">
                         <label class="font-mono text-xs text-yellow-300 w-32 shrink-0">{${p.name}}</label>
                         <input id="${id}__pp__${p.name}" type="text" placeholder="${p.description||p.name}"
-                            class="flex-1 bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono transition-colors">
+                            class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono transition-colors">
                     </div>`).join('')}
                 </div>
             </div>` : ''}
@@ -1472,7 +1503,7 @@ function renderEndpointCard({ path, method, op }, spec) {
                     <div>
                         <label class="text-[10px] font-mono text-slate-500 block mb-1">${p.name}${p.required?' <span class="text-red-400">*</span>':''}</label>
                         <input id="${id}__qp__${p.name}" type="text" placeholder="${p.description||''}"
-                            class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono transition-colors">
+                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono transition-colors">
                     </div>`).join('')}
                 </div>
             </div>` : ''}
@@ -1480,7 +1511,7 @@ function renderEndpointCard({ path, method, op }, spec) {
             <div>
                 <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Corps JSON</p>
                 <textarea id="${id}__bj" rows="7" spellcheck="false"
-                    class="w-full bg-[#0f172a] border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-green-300 font-mono focus:outline-none focus:border-blue-500 resize-y transition-colors">${defaultBody}</textarea>
+                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-green-300 font-mono focus:outline-none focus:border-blue-500 resize-y transition-colors">${defaultBody}</textarea>
             </div>` : ''}
             <div class="flex items-center gap-3 pt-1">
                 <button onclick="tryApiEp('${id}','${method}','${path}')"
@@ -1560,7 +1591,7 @@ async function tryApiEp(id, method, pathTpl) {
                 <span class="font-mono font-bold text-sm ${sc}">${r.status} ${r.statusText}</span>
                 <span class="text-xs text-slate-500">${ms} ms</span>
             </div>
-            <pre class="bg-[#0f172a] border border-slate-700 rounded-lg p-4 text-xs text-slate-300 font-mono overflow-x-auto max-h-72 overflow-y-auto">${_esc(pretty)}</pre>`;
+            <pre class="bg-slate-950 border border-slate-700 rounded-lg p-4 text-xs text-slate-300 font-mono overflow-x-auto max-h-72 overflow-y-auto">${_esc(pretty)}</pre>`;
     } catch(e) {
         resEl.innerHTML = `<p class="text-red-400 text-sm py-2">Erreur réseau : ${e.message}</p>`;
     }
