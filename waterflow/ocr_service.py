@@ -22,6 +22,7 @@ import re
 import json
 import base64
 import logging
+import unicodedata
 from typing import Any
 
 import requests
@@ -162,6 +163,89 @@ def _claude_structure(raw_text: str) -> dict[str, Any]:
 
 # ── Normalisation ────────────────────────────────────────────────────────────
 
+def _regex_structure(raw_text: str) -> dict[str, Any]:
+    """
+    Structure le texte OCR SANS IA (fallback si aucune clé Anthropic).
+    Gère la mise en page en colonnes d'OCR.space : la colonne « Paramètre »
+    (libellés) et la colonne « Résultat » (valeurs) sont lues séparément puis
+    appariées dans l'ordre.
+    """
+    def _norm(s: str) -> str:
+        s = (s or "").lower().strip()
+        return "".join(c for c in unicodedata.normalize("NFD", s)
+                       if unicodedata.category(c) != "Mn")
+
+    def _feat(line: str):
+        n = _norm(line)
+        if "unite ph" in n:
+            return None
+        if n == "ph" or n.startswith("ph "):
+            return "ph"
+        table = [
+            ("Hardness",        ("duret", "(th)")),
+            ("Solids",          ("solides",)),
+            ("Chloramines",     ("chloramine",)),
+            ("Sulfate",         ("sulfate",)),
+            ("Conductivity",    ("conductivit",)),
+            ("Organic_carbon",  ("carbone organique", "cot")),
+            ("Trihalomethanes", ("trihalom", "thm")),
+            ("Turbidity",       ("turbidit",)),
+        ]
+        for feat, kws in table:
+            if any(k in n for k in kws):
+                return feat
+        return None
+
+    def _to_num(s: str):
+        s = s.replace(" ", "").replace(" ", "").replace(" ", "").replace(",", ".")
+        try:
+            return float(s)
+        except ValueError:
+            return None
+
+    def _is_num(cell: str) -> bool:
+        return bool(re.fullmatch(r"[\d\s]+(?:[.,]\d+)?", cell.strip()))
+
+    # Gere les DEUX mises en page renvoyees par OCR.space :
+    #  - lignes tabulees "pH<TAB>7,0<TAB>unite pH"   (row layout)
+    #  - colonnes : bloc de libelles puis bloc de valeurs   (column layout)
+    mesures    = {}
+    labels_col = []
+    nums_col   = []
+    for line in raw_text.splitlines():
+        if not line.strip():
+            continue
+        cells = [c.strip() for c in re.split(r"	|\s{2,}", line) if c.strip()]
+        feat = next((f for c in cells if (f := _feat(c))), None)
+        num  = next((_to_num(c) for c in cells if _is_num(c)), None)
+        if feat and num is not None:
+            mesures.setdefault(feat, num)
+        elif feat and num is None:
+            labels_col.append(feat)
+        elif feat is None and num is not None and len(cells) == 1:
+            nums_col.append(num)
+
+    if sum(f in mesures for f in FEATURES) < 5:
+        for feat, val in zip(labels_col, nums_col):
+            mesures.setdefault(feat, val)
+
+    # Date (jj/mm/aaaa -> aaaa-mm-jj)
+    date_iso = None
+    md = re.search(r"(\d{2})/(\d{2})/(\d{4})", raw_text)
+    if md:
+        date_iso = f"{md.group(3)}-{md.group(2)}-{md.group(1)}"
+
+    return {
+        "date_prelevement": date_iso,
+        "id_client":        None,
+        "lieu":             None,
+        "mesures":          mesures,
+        "observations":     None,
+        "raw_text":         raw_text,
+        "warnings":         [],
+    }
+
+
 def _normalise(data: dict) -> dict[str, Any]:
     """Normalise et valide le dict extrait."""
     mesures  = data.get("mesures", {})
@@ -210,7 +294,12 @@ def extract_from_document(file_bytes: bytes, mime: str) -> dict[str, Any]:
             if len(raw_text) < 20:
                 raise ValueError("Texte OCR.space trop court, basculement sur Claude Vision")
             logger.info("OCR.space OK | %d chars", len(raw_text))
-            result = _claude_structure(raw_text)
+            # Structuration : Claude si clé dispo (sémantique supérieure),
+            # sinon parseur intégré (aucune IA requise).
+            if ANTHROPIC_KEY:
+                result = _claude_structure(raw_text)
+            else:
+                result = _regex_structure(raw_text)
             if not result.get("raw_text"):
                 result["raw_text"] = raw_text
             return _normalise(result)
