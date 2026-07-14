@@ -193,7 +193,13 @@
             <div class="grid grid-cols-2 gap-4 mb-6">
                 <!-- Manual form -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                    <h2 class="font-semibold text-white mb-4">🧪 Nouvelle analyse manuelle</h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-semibold text-white">🧪 Nouvelle analyse manuelle</h2>
+                        <button type="button" onclick="randomManual()"
+                            class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors">
+                            🎲 Aléatoire
+                        </button>
+                    </div>
                     <div class="grid grid-cols-2 gap-3" id="manual-fields"></div>
                     <button id="btn-manual" onclick="submitManual()"
                         class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
@@ -206,6 +212,7 @@
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
                     <h2 class="font-semibold text-white mb-4">📄 Upload fiche laboratoire</h2>
                     <label id="drop-zone" for="ocr-inp"
+                        ondragover="ocrDragOver(event)" ondragleave="ocrDragLeave(event)" ondrop="ocrDrop(event)"
                         class="block cursor-pointer border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-xl p-8 text-center transition-colors">
                         <div class="text-4xl mb-2">📁</div>
                         <p class="text-sm text-slate-400">Glisser-déposer ou cliquer</p>
@@ -809,6 +816,15 @@ function buildManualForm() {
     `).join('');
 }
 
+function randomManual() {
+    // Remplissage aléatoire réaliste : 60 % à 140 % des valeurs de référence (placeholders).
+    FIELDS.forEach(f => {
+        const base = parseFloat(f.ph) || 1;
+        const el = document.getElementById(`mf-${f.k}`);
+        if (el) el.value = +(base * (0.6 + Math.random() * 0.8)).toFixed(2);
+    });
+}
+
 async function submitManual() {
     const btn = document.getElementById('btn-manual');
     const res = document.getElementById('manual-res');
@@ -846,8 +862,30 @@ async function submitManual() {
     } finally { btn.textContent = 'Analyser'; btn.disabled = false; }
 }
 
-async function submitOcr(input) {
-    const file = input.files[0]; if (!file) return;
+async function submitOcr(input) {          // déclenché par le clic (champ fichier)
+    const file = input.files[0];
+    input.value = '';                       // réautorise le renvoi du même fichier
+    return submitOcrFile(file);
+}
+
+// ─── Glisser-déposer (drag & drop) ────────────────────────────────────────────
+function ocrDragOver(e) {
+    e.preventDefault();                     // indispensable : sinon le navigateur ouvre le fichier
+    document.getElementById('drop-zone').classList.add('border-blue-500', 'bg-blue-500/5');
+}
+function ocrDragLeave(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.remove('border-blue-500', 'bg-blue-500/5');
+}
+function ocrDrop(e) {
+    e.preventDefault();
+    ocrDragLeave(e);
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) submitOcrFile(files[0]);
+}
+
+async function submitOcrFile(file) {        // logique commune clic + glisser-déposer
+    if (!file) return;
     const zone = document.getElementById('drop-zone');
     const res  = document.getElementById('ocr-res');
     zone.innerHTML = `<div class="py-6 text-center">
@@ -881,7 +919,6 @@ async function submitOcr(input) {
         zone.innerHTML = `<div class="text-4xl mb-2">📁</div>
             <p class="text-sm text-slate-400">Glisser-déposer ou cliquer</p>
             <p class="text-xs text-slate-600 mt-1">PDF · PNG · JPG · max 20 Mo</p>`;
-        input.value = '';
     }
 }
 
