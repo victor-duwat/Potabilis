@@ -15,7 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Répertoires ML + données (le volume /data héritera de ce propriétaire)
-RUN mkdir -p model_artifacts /data && chmod +x docker-entrypoint.sh
+# Le `sed` retire d'éventuels retours chariot Windows (CRLF) : sans cela, /bin/sh
+# lit « set -e\r » et refuse de démarrer. Garantit un build correct même si le
+# dépôt est cloné sous Windows (voir aussi .gitattributes).
+RUN mkdir -p model_artifacts /data \
+    && sed -i 's/\r$//' docker-entrypoint.sh \
+    && chmod +x docker-entrypoint.sh
 
 # Utilisateur non-root (propriétaire de /app ET de /data pour l'écriture SQLite/MLflow)
 RUN useradd -m -u 1000 waterflow && chown -R waterflow /app /data

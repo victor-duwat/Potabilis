@@ -1,0 +1,27 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Normalisation des fins de ligne.
+#
+# Sous Windows, Git convertit par défaut LF -> CRLF au checkout (core.autocrlf).
+# Or les scripts shell copiés dans une image Linux DOIVENT rester en LF : sinon
+# /bin/sh lit « set -e\r » et refuse de démarrer (« Illegal option - »), ce qui
+# faisait planter le conteneur applicatif en boucle.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Détection automatique du texte, normalisé en LF dans le dépôt
+* text=auto
+
+# Fichiers exécutés dans un conteneur Linux : LF obligatoire
+*.sh            text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile      text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+
+# Binaires : ne jamais toucher
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pdf  binary
+*.pkl  binary
+*.db   binary
+*.zip  binary
