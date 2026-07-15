@@ -46,7 +46,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "L'API Waterflow 2 ne répond plus au scrape Prometheus"
+          summary: "L'API Potabilis ne répond plus au scrape Prometheus"
           description: "Le service est down ou l'endpoint /metrics est inaccessible."
 
   - name: waterflow_ocr

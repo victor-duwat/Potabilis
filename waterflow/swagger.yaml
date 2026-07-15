@@ -1,6 +1,6 @@
 openapi: "2.0"
 info:
-  title: "Waterflow 2 — API MLOps Qualité de l'Eau"
+  title: "Potabilis — API MLOps Qualité de l'Eau"
   description: |
     Plateforme MLOps pour la classification de la potabilité de l'eau.
 
@@ -17,7 +17,7 @@ info:
     Rôles experts disponibles : `analyste`, `exploit` (super-rôle qui inclut analyste).
   version: "2.0.0"
   contact:
-    name: "Waterflow 2 — La Plateforme B3IA"
+    name: "Potabilis — La Plateforme B3IA"
 
 host: "localhost:8080"
 basePath: "/"

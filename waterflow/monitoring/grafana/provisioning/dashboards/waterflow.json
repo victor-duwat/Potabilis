@@ -17,7 +17,7 @@
   "annotations": {
     "list": []
   },
-  "description": "Waterflow 2 — Tableau de bord MLOps & API",
+  "description": "Potabilis — Tableau de bord MLOps & API",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -450,7 +450,7 @@
   },
   "timepicker": {},
   "timezone": "Europe/Paris",
-  "title": "Waterflow 2 — Monitoring API",
+  "title": "Potabilis — Monitoring API",
   "uid": "waterflow2-monitoring",
   "version": 1
 }
