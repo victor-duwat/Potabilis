@@ -3,578 +3,601 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Potabilis — Potabilité</title>
+    <title>Potabilis — Analyse de potabilité</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      // ─── Direction artistique : « Graphite chaud + Teal » ───────────────────
-      // On remappe les échelles Tailwind « slate » (neutres) et « blue » (accent
-      // primaire) : tous les composants — y compris ceux générés en JS — adoptent
-      // la nouvelle identité sans renommer une seule classe.
+      // ─── Direction artistique « Laboratoire » : clair, sobre, imprimable ───────
+      // Palette sémantique (canvas / surface / line / ink / accent) : aucune classe
+      // héritée d'un thème sombre, tout est explicite.
       tailwind.config = {
         theme: { extend: {
           colors: {
-            slate: {
-              50:'#f6f5f3', 100:'#e9e6e2', 200:'#d5d0ca', 300:'#b4aa9c',
-              400:'#8c8378', 500:'#6a625a', 600:'#48423c', 700:'#2e2a26',
-              800:'#1d1a17', 900:'#141210', 950:'#0d0b0a',
-            },
-            blue: {   // accent primaire -> teal
-              200:'#99f6e4', 300:'#5eead4', 400:'#2dd4bf', 500:'#0d9488',
-              600:'#0f766e', 700:'#115e59', 800:'#124f48', 900:'#103c39', 950:'#082f2c',
-            },
+            canvas:  '#f4f6f5',                     // fond de page
+            surface: '#ffffff',                     // fiches / panneaux
+            line:    '#e3e8e5',                     // filets et bordures
+            ink:  { DEFAULT:'#16211c', 2:'#4a5a52', 3:'#7d8c84', 4:'#aab6af' },
+            accent:{ 50:'#e9f3ee', 100:'#cfe6da', 400:'#198754', 500:'#157347', 600:'#0f5132', 700:'#0a3a24' },
+            ok:   { 50:'#e9f3ee', 600:'#0f5132' },
+            bad:  { 50:'#fbeaec', 600:'#b02a37' },
+            warn: { 50:'#fff6e0', 600:'#8a6d0b' },
           },
-          fontFamily: { sans: ['Sora','Segoe UI','system-ui','sans-serif'] },
+          fontFamily: {
+            sans: ['IBM Plex Sans','Segoe UI','system-ui','sans-serif'],
+            mono: ['IBM Plex Mono','Consolas','monospace'],
+          },
         }},
       };
     </script>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        *, body { font-family: 'Sora', 'Segoe UI', system-ui, sans-serif; }
-        h1, h2, h3, .font-display { font-family: 'Space Grotesk', 'Sora', sans-serif; letter-spacing: -0.015em; }
-        body {
-            background-color: #0d0b0a;
-            background-image:
-                radial-gradient(72% 55% at 50% -12%, rgba(20,184,166,0.13), transparent 72%),
-                radial-gradient(40% 40% at 100% 0%, rgba(13,148,136,0.07), transparent 70%);
-            background-repeat: no-repeat;
-        }
-        .spin { animation: _spin .7s linear infinite; }
-        @keyframes _spin { to { transform: rotate(360deg); } }
-        .fade-in { animation: _fade .25s ease; }
-        @keyframes _fade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #1d1a17; }
-        ::-webkit-scrollbar-thumb { background: #48423c; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #5c554d; }
-        input[type=number]::-webkit-inner-spin-button { opacity: 0.4; }
+        *, body { font-family:'IBM Plex Sans','Segoe UI',system-ui,sans-serif; }
+        body { background:#f4f6f5; color:#16211c; }
+        /* chiffres alignés : lisibilité des tableaux de mesures */
+        .tnum { font-variant-numeric: tabular-nums; }
+        .spin { animation:_spin .7s linear infinite; }
+        @keyframes _spin { to { transform:rotate(360deg); } }
+        .fade-in { animation:_fade .18s ease; }
+        @keyframes _fade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+        ::-webkit-scrollbar { width:10px; height:10px; }
+        ::-webkit-scrollbar-track { background:#eef1ef; }
+        ::-webkit-scrollbar-thumb { background:#c9d3cd; border:3px solid #eef1ef; border-radius:6px; }
+        ::-webkit-scrollbar-thumb:hover { background:#aab6af; }
+        input[type=number]::-webkit-inner-spin-button { opacity:.35; }
+        @media print { .no-print { display:none !important; } body { background:#fff; } }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen">
+<body class="bg-canvas text-ink min-h-screen">
 
-<!-- ═══════════════════ MODAL ═══════════════════ -->
-<div id="modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl fade-in">
-        <h3 id="modal-title" class="font-bold text-white text-lg mb-1"></h3>
-        <p id="modal-sub" class="text-slate-400 text-sm mb-4"></p>
-        <div id="modal-body"></div>
-        <button onclick="closeModal()"
-            class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl py-2.5 text-sm font-medium transition-colors">
-            Fermer
-        </button>
+<!-- ═══════════ Bibliothèque d'icônes (SVG inline, aucun emoji) ═══════════ -->
+<svg width="0" height="0" class="hidden" aria-hidden="true">
+  <defs>
+    <g id="_s" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></g>
+  </defs>
+  <symbol id="i-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5s5.5 6.1 5.5 9.7a5.5 5.5 0 0 1-11 0C6.5 9.6 12 3.5 12 3.5z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3v6.2L4.7 17a2 2 0 0 0 1.7 3h11.2a2 2 0 0 0 1.7-3l-4.8-7.8V3"/><path d="M8 3h8"/><path d="M7.2 14h9.6"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18"/><path d="M5 20V9.5L12 5l7 4.5V20"/><path d="M9.5 20v-4.5h5V20"/><path d="M9.5 11h1M13.5 11h1"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4M12.5 16V8M17 16v-6"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 5 6v5.5c0 4.3 2.9 8.1 7 9.3 4.1-1.2 7-5 7-9.3V6z"/><path d="m9.3 12 1.9 1.9 3.5-3.6"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6h5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a1.5 1.5 0 0 0-1.5 1.5v15A1.5 1.5 0 0 0 7 21h10a1.5 1.5 0 0 0 1.5-1.5V7.5z"/><path d="M14 3v4.5h4.5"/><path d="M8.5 13h7M8.5 16.5h4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="3.5"/><path d="M11.5 12H21"/><path d="M17.5 12v3M20 12v2.2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5 2.8 20h18.4z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20H5.5A1.5 1.5 0 0 1 4 18.5v-13A1.5 1.5 0 0 1 5.5 4H10"/><path d="M15.5 8.5 20 12l-4.5 3.5"/><path d="M20 12H9"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14v5.5A1.5 1.5 0 0 1 16.5 21h-11A1.5 1.5 0 0 1 4 19.5v-11A1.5 1.5 0 0 1 5.5 7H11"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 4.5 4.5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4 3.5 10.5l6.5 2.5 2.5 6.5z"/><path d="M20 4l-10 9"/></symbol>
+  <symbol id="i-arrow-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m10 7-5 5 5 5"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m14 7 5 5-5 5"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 5.5V4a1.5 1.5 0 0 0-3 0v8"/><path d="M11 8.5V6a1.5 1.5 0 0 0-3 0v8"/><path d="M8 10v6l-2-2.5"/><path d="M14 12V6.5a1.5 1.5 0 0 1 3 0V15a5 5 0 0 1-5 5H10a4 4 0 0 1-4-4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M15 9V5.5A1.5 1.5 0 0 0 13.5 4h-8A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15H9"/></symbol>
+</svg>
+
+<!-- ═══════════ MODALE ═══════════ -->
+<div id="modal" class="hidden fixed inset-0 bg-ink/40 flex items-center justify-center z-50 p-4">
+    <div class="bg-surface border border-line rounded-lg max-w-md w-full shadow-xl fade-in">
+        <div class="px-6 pt-5 pb-4 border-b border-line">
+            <h3 id="modal-title" class="font-semibold text-ink text-base"></h3>
+            <p id="modal-sub" class="text-ink-3 text-sm mt-0.5"></p>
+        </div>
+        <div class="px-6 py-5"><div id="modal-body"></div></div>
+        <div class="px-6 pb-5">
+            <button onclick="closeModal()"
+                class="w-full border border-line hover:bg-canvas text-ink-2 rounded-md py-2.5 text-sm font-medium transition-colors">
+                Fermer
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- ═══════════════════ LOGIN ═══════════════════ -->
-<div id="pg-login" class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm fade-in">
-        <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 text-4xl bg-gradient-to-br from-blue-500/20 to-blue-700/10 ring-1 ring-blue-500/30 shadow-lg shadow-blue-950/50">💧</div>
-            <h1 class="text-2xl font-bold text-white tracking-tight">Potab<span class="text-blue-400">ilis</span></h1>
-            <p class="text-slate-500 text-sm mt-1 uppercase tracking-[0.2em] text-xs">Analyse de potabilité</p>
+<!-- ═══════════ CONNEXION ═══════════ -->
+<div id="pg-login" class="min-h-screen grid lg:grid-cols-2">
+    <!-- Volet identité -->
+    <div class="hidden lg:flex flex-col justify-between bg-accent-600 text-white p-12">
+        <div class="flex items-center gap-2.5">
+            <svg class="w-6 h-6"><use href="#i-drop"/></svg>
+            <span class="font-semibold tracking-[0.18em] text-sm uppercase">Potabilis</span>
         </div>
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-2xl">
-            <div class="flex bg-slate-900/60 rounded-xl p-1 mb-5">
-                <button id="ltab-client" onclick="setLoginTab('client')"
-                    class="flex-1 py-2 rounded-lg text-sm font-medium transition-all">
-                    🏛 Client
-                </button>
-                <button id="ltab-expert" onclick="setLoginTab('expert')"
-                    class="flex-1 py-2 rounded-lg text-sm font-medium transition-all">
-                    🔬 Expert
-                </button>
+        <div>
+            <p class="text-3xl font-semibold leading-snug max-w-md">Analyse de la potabilité de l'eau pour les collectivités.</p>
+            <p class="mt-4 text-white/70 text-sm max-w-md leading-relaxed">
+                Dépôt des mesures physico-chimiques, lecture automatisée des fiches de laboratoire,
+                et classification par modèle d'apprentissage supervisé.
+            </p>
+            <div class="mt-8 grid grid-cols-3 gap-px bg-white/20 border border-white/20 rounded-md overflow-hidden max-w-md">
+                <div class="bg-accent-600 px-4 py-3"><p class="text-[10px] uppercase tracking-wider text-white/60">Paramètres</p><p class="text-xl font-semibold tnum">9</p></div>
+                <div class="bg-accent-600 px-4 py-3"><p class="text-[10px] uppercase tracking-wider text-white/60">Modèle</p><p class="text-xl font-semibold">XGBoost</p></div>
+                <div class="bg-accent-600 px-4 py-3"><p class="text-[10px] uppercase tracking-wider text-white/60">Sources</p><p class="text-xl font-semibold">JSON · OCR</p></div>
             </div>
+        </div>
+        <p class="text-white/50 text-xs">Titre RNCP 37827 — Développeur en intelligence artificielle</p>
+    </div>
+
+    <!-- Volet formulaire -->
+    <div class="flex items-center justify-center p-6 bg-canvas">
+        <div class="w-full max-w-sm fade-in">
+            <div class="lg:hidden flex items-center gap-2 mb-8 text-accent-600">
+                <svg class="w-6 h-6"><use href="#i-drop"/></svg>
+                <span class="font-semibold tracking-[0.18em] text-sm uppercase">Potabilis</span>
+            </div>
+
+            <h1 class="text-xl font-semibold text-ink">Accès à la plateforme</h1>
+            <p class="text-ink-3 text-sm mt-1 mb-6">Sélectionnez votre profil pour vous identifier.</p>
+
+            <div class="flex border-b border-line mb-6">
+                <button id="ltab-client" onclick="setLoginTab('client')" class="px-4 py-2.5 text-sm transition-colors"></button>
+                <button id="ltab-expert" onclick="setLoginTab('expert')" class="px-4 py-2.5 text-sm transition-colors"></button>
+            </div>
+
             <div id="ls-client">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Clé API</label>
-                <input id="inp-key" type="password" placeholder="Collez votre X-API-Key…"
-                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                <label class="block text-xs font-semibold text-ink-2 mb-1.5">Clé API</label>
+                <input id="inp-key" type="password" placeholder="X-API-Key"
+                    class="w-full bg-surface border border-line rounded-md px-3 py-2.5 text-sm font-mono text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-100 transition"
                     onkeydown="if(event.key==='Enter')doLogin()">
+                <p class="text-xs text-ink-3 mt-1.5">Fournie par l'administrateur de la plateforme.</p>
             </div>
             <div id="ls-expert" class="hidden">
-                <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Token Bearer</label>
-                <input id="inp-tok" type="password" placeholder="Collez votre token expert…"
-                    class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                <label class="block text-xs font-semibold text-ink-2 mb-1.5">Jeton d'accès</label>
+                <input id="inp-tok" type="password" placeholder="Bearer token"
+                    class="w-full bg-surface border border-line rounded-md px-3 py-2.5 text-sm font-mono text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 focus:ring-2 focus:ring-accent-100 transition"
                     onkeydown="if(event.key==='Enter')doLogin()">
+                <p class="text-xs text-ink-3 mt-1.5">Analyste qualité ou responsable d'exploitation.</p>
             </div>
-            <div id="login-err" class="hidden mt-3 bg-red-900/40 border border-red-800 text-red-300 rounded-lg px-3 py-2 text-sm"></div>
+
+            <div id="login-err" class="hidden mt-4 bg-bad-50 border border-bad-600/25 text-bad-600 rounded-md px-3 py-2.5 text-sm flex items-start gap-2">
+            </div>
+
             <button id="login-btn" onclick="doLogin()"
-                class="mt-4 w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors">
+                class="mt-5 w-full bg-accent-600 hover:bg-accent-700 text-white rounded-md py-2.5 text-sm font-semibold transition-colors flex items-center justify-center">
                 Se connecter
             </button>
-            <p class="text-center mt-4">
-                <a href="/apidocs" target="_blank"
-                    class="text-xs text-slate-500 hover:text-blue-400 transition-colors">Documentation API ↗</a>
-            </p>
+
+            <a href="/apidocs" target="_blank"
+                class="mt-5 inline-flex items-center gap-1.5 text-xs text-ink-3 hover:text-accent-600 transition-colors">
+                <svg class="w-3.5 h-3.5"><use href="#i-external"/></svg> Documentation de l'API
+            </a>
         </div>
     </div>
 </div>
 
-<!-- ═══════════════════ APP ═══════════════════ -->
-<div id="pg-app" class="hidden min-h-screen flex flex-col">
+<!-- ═══════════ APPLICATION ═══════════ -->
+<div id="pg-app" class="hidden min-h-screen lg:grid" style="grid-template-columns:240px 1fr">
 
-    <!-- Header -->
-    <header class="bg-slate-800/90 border-b border-slate-700 sticky top-0 z-20 backdrop-blur">
-        <div class="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3 min-w-0">
-                <span class="text-xl select-none">💧</span>
-                <span class="font-bold text-white hidden sm:block">Potabilis</span>
-                <span id="hdr-badge" class="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"></span>
-                <span id="hdr-user" class="text-sm text-slate-400 truncate"></span>
-            </div>
-            <!-- Expert tab nav -->
-            <nav id="expert-tabs" class="hidden flex gap-1">
-                <button onclick="showTab('dash')" data-tab="dash"
-                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    📊 Dashboard
-                </button>
-                <button onclick="showTab('lab')" data-tab="lab"
-                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    🧪 Laboratoire
-                </button>
-                <button onclick="showTab('prevs')" data-tab="prevs"
-                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    🧪 Prélèvements
-                </button>
-                <button onclick="showTab('clis')" data-tab="clis"
-                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    🏛 Clients
-                </button>
-                <button onclick="showTab('cliDash')" data-tab="cliDash"
-                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    📈 Par client
-                </button>
-                <button onclick="showTab('api')" data-tab="api"
-                    class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    🔌 API
-                </button>
-                <button id="tab-btn-audit" onclick="showTab('audit')" data-tab="audit"
-                    class="tab-btn hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    🔍 Audit
-                </button>
-                <button id="tab-btn-metrics" onclick="showTab('metrics')" data-tab="metrics"
-                    class="tab-btn hidden px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-                    📡 Métriques
-                </button>
-            </nav>
-            <div class="flex items-center gap-3 shrink-0">
-                <div class="flex items-center gap-1.5">
-                    <span id="h-dot" class="w-2 h-2 rounded-full bg-slate-600"></span>
-                    <span id="h-txt" class="text-xs text-slate-500 hidden sm:block">…</span>
-                </div>
-                <button onclick="logout()"
-                    class="text-xs text-slate-500 hover:text-red-400 transition-colors px-2 py-1 rounded">
-                    Déconnexion
-                </button>
-            </div>
+    <!-- ── Barre latérale ── -->
+    <aside class="bg-ink text-white/80 flex flex-col no-print">
+        <div class="px-5 h-16 flex items-center gap-2.5 border-b border-white/10">
+            <svg class="w-5 h-5 text-accent-400"><use href="#i-drop"/></svg>
+            <span class="font-semibold tracking-[0.16em] text-xs uppercase text-white">Potabilis</span>
         </div>
-    </header>
 
-    <!-- Main -->
-    <main class="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        <nav id="expert-tabs" class="hidden flex-1 p-3 space-y-0.5 overflow-y-auto"></nav>
+        <div id="client-side" class="hidden flex-1 p-5">
+            <p class="text-[10px] uppercase tracking-wider text-white/40 mb-2">Espace</p>
+            <p class="text-sm text-white">Dépôt de prélèvements</p>
+        </div>
 
-        <!-- ─── CLIENT VIEW ─── -->
-        <div id="vw-client" class="hidden">
-            <!-- Stats -->
-            <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Prélèvements</p>
-                    <p class="text-3xl font-bold text-white" id="c-stat-tot">—</p>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Potables</p>
-                    <p class="text-3xl font-bold text-green-400" id="c-stat-pot">—</p>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Non potables</p>
-                    <p class="text-3xl font-bold text-red-400" id="c-stat-npot">—</p>
-                </div>
+        <div class="border-t border-white/10 p-4 space-y-3">
+            <div class="flex items-center gap-2 text-xs">
+                <span id="h-dot" class="w-1.5 h-1.5 rounded-full bg-white/30 shrink-0"></span>
+                <span id="h-txt" class="text-white/50">…</span>
             </div>
+            <div class="min-w-0">
+                <span id="hdr-badge" class="text-[10px] uppercase tracking-wider font-semibold"></span>
+                <p id="hdr-user" class="text-xs text-white/60 truncate mt-0.5"></p>
+            </div>
+            <button onclick="logout()"
+                class="w-full flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors py-1">
+                <svg class="w-3.5 h-3.5"><use href="#i-logout"/></svg> Déconnexion
+            </button>
+        </div>
+    </aside>
 
-            <!-- Action panels -->
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <!-- Manual form -->
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="font-semibold text-white">🧪 Nouvelle analyse manuelle</h2>
-                        <button type="button" onclick="randomManual()"
-                            class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600 transition-colors">
-                            🎲 Aléatoire
+    <!-- ── Zone principale ── -->
+    <div class="flex flex-col min-w-0">
+        <header class="h-16 bg-surface border-b border-line flex items-center justify-between px-6 shrink-0 no-print">
+            <div>
+                <h1 id="pg-title" class="text-sm font-semibold text-ink">Tableau de bord</h1>
+                <p id="pg-sub" class="text-xs text-ink-3"></p>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 overflow-x-hidden">
+
+        <!-- ─── VUE CLIENT ─── -->
+        <div id="vw-client" class="hidden max-w-6xl">
+            <section class="grid grid-cols-3 gap-px bg-line border border-line rounded-lg overflow-hidden mb-6">
+                <div class="bg-surface px-5 py-4">
+                    <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Prélèvements</p>
+                    <p class="text-2xl font-semibold text-ink tnum mt-1" id="c-stat-tot">—</p>
+                </div>
+                <div class="bg-surface px-5 py-4">
+                    <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Conformes</p>
+                    <p class="text-2xl font-semibold text-ok-600 tnum mt-1" id="c-stat-pot">—</p>
+                </div>
+                <div class="bg-surface px-5 py-4">
+                    <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Non conformes</p>
+                    <p class="text-2xl font-semibold text-bad-600 tnum mt-1" id="c-stat-npot">—</p>
+                </div>
+            </section>
+
+            <div class="grid lg:grid-cols-2 gap-6 mb-6">
+                <!-- Saisie manuelle -->
+                <section class="bg-surface border border-line rounded-lg">
+                    <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-ink">Nouvelle analyse</h2>
+                        <button onclick="randomManual()"
+                            class="inline-flex items-center gap-1.5 text-xs border border-line hover:border-accent-500 hover:text-accent-600 text-ink-2 rounded px-2.5 py-1.5 transition-colors">
+                            <svg class="w-3.5 h-3.5"><use href="#i-shuffle"/></svg> Aléatoire
                         </button>
                     </div>
-                    <div class="grid grid-cols-2 gap-3" id="manual-fields"></div>
-                    <button id="btn-manual" onclick="submitManual()"
-                        class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                        Analyser
-                    </button>
-                    <div id="manual-res" class="hidden mt-4 rounded-xl p-4 text-center"></div>
-                </div>
+                    <div class="p-5">
+                        <div class="grid grid-cols-2 gap-3" id="manual-fields"></div>
+                        <button id="btn-manual" onclick="submitManual()"
+                            class="mt-5 w-full bg-accent-600 hover:bg-accent-700 text-white rounded-md py-2.5 text-sm font-semibold transition-colors flex items-center justify-center">
+                            Analyser le prélèvement
+                        </button>
+                        <div id="manual-res" class="hidden mt-4 rounded-md border p-4 text-center"></div>
+                    </div>
+                </section>
 
-                <!-- OCR Upload -->
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                    <h2 class="font-semibold text-white mb-4">📄 Upload fiche laboratoire</h2>
-                    <label id="drop-zone" for="ocr-inp"
-                        ondragover="ocrDragOver(event)" ondragleave="ocrDragLeave(event)" ondrop="ocrDrop(event)"
-                        class="block cursor-pointer border-2 border-dashed border-slate-600 hover:border-blue-500 rounded-xl p-8 text-center transition-colors">
-                        <div class="text-4xl mb-2">📁</div>
-                        <p class="text-sm text-slate-400">Glisser-déposer ou cliquer</p>
-                        <p class="text-xs text-slate-600 mt-1">PDF · PNG · JPG · max 20 Mo</p>
-                    </label>
-                    <input id="ocr-inp" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg"
-                        onchange="submitOcr(this)">
-                    <div id="ocr-res" class="hidden mt-4 rounded-xl p-3 text-sm"></div>
-                </div>
+                <!-- Dépôt de fiche -->
+                <section class="bg-surface border border-line rounded-lg">
+                    <div class="px-5 py-3.5 border-b border-line">
+                        <h2 class="text-sm font-semibold text-ink">Fiche de laboratoire</h2>
+                    </div>
+                    <div class="p-5">
+                        <label id="drop-zone" for="ocr-inp"
+                            ondragover="ocrDragOver(event)" ondragleave="ocrDragLeave(event)" ondrop="ocrDrop(event)"
+                            class="block cursor-pointer border border-dashed border-line hover:border-accent-500 hover:bg-accent-50/40 rounded-md p-8 text-center transition-colors">
+                            <svg class="w-7 h-7 mx-auto text-ink-4"><use href="#i-upload"/></svg>
+                            <p class="text-sm text-ink-2 mt-2.5">Glissez une fiche ici, ou cliquez pour parcourir</p>
+                            <p class="text-xs text-ink-3 mt-1">PDF, PNG ou JPG — 20 Mo maximum</p>
+                        </label>
+                        <input id="ocr-inp" type="file" class="hidden" accept=".pdf,.png,.jpg,.jpeg" onchange="submitOcr(this)">
+                        <div id="ocr-res" class="hidden mt-4 rounded-md border p-3 text-sm"></div>
+                        <p class="text-xs text-ink-3 mt-4 leading-relaxed">
+                            Les 9 paramètres sont extraits automatiquement du document, puis soumis au modèle de classification.
+                        </p>
+                    </div>
+                </section>
             </div>
 
-            <!-- Prelevements list -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl fade-in">
-                <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-                    <h2 class="font-semibold text-white">Mes prélèvements récents</h2>
-                    <button onclick="loadClientPrevs()" class="text-xs text-blue-400 hover:underline">Actualiser</button>
+            <section class="bg-surface border border-line rounded-lg overflow-hidden">
+                <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-ink">Historique des prélèvements</h2>
+                    <button onclick="loadClientPrevs()" class="text-ink-3 hover:text-accent-600 transition-colors" title="Actualiser">
+                        <svg class="w-4 h-4"><use href="#i-refresh"/></svg>
+                    </button>
                 </div>
                 <div id="c-prevs"></div>
-            </div>
+            </section>
         </div>
 
-        <!-- ─── EXPERT VIEW ─── -->
+        <!-- ─── VUE EXPERT ─── -->
         <div id="vw-expert" class="hidden">
 
-            <!-- Tab: Dashboard -->
-            <div id="tab-dash" class="hidden">
-                <div class="grid grid-cols-4 gap-4 mb-6">
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Prélèvements</p>
-                        <p class="text-3xl font-bold text-white" id="kpi-tot">—</p>
+            <!-- Onglet : Tableau de bord -->
+            <div id="tab-dash" class="hidden max-w-6xl">
+                <section class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line rounded-lg overflow-hidden mb-6">
+                    <div class="bg-surface px-5 py-4">
+                        <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Prélèvements</p>
+                        <p class="text-2xl font-semibold text-ink tnum mt-1" id="kpi-tot">—</p>
                     </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Taux potabilité</p>
-                        <p class="text-3xl font-bold text-green-400" id="kpi-rate">—</p>
+                    <div class="bg-surface px-5 py-4">
+                        <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Taux de potabilité</p>
+                        <p class="text-2xl font-semibold text-ok-600 tnum mt-1" id="kpi-rate">—</p>
                     </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Clients actifs</p>
-                        <p class="text-3xl font-bold text-blue-400" id="kpi-clis">—</p>
+                    <div class="bg-surface px-5 py-4">
+                        <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Clients actifs</p>
+                        <p class="text-2xl font-semibold text-accent-600 tnum mt-1" id="kpi-clis">—</p>
                     </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Prédictions</p>
-                        <p class="text-3xl font-bold text-white" id="kpi-pred">—</p>
+                    <div class="bg-surface px-5 py-4">
+                        <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Prédictions</p>
+                        <p class="text-2xl font-semibold text-ink tnum mt-1" id="kpi-pred">—</p>
                     </div>
+                </section>
+
+                <div class="grid lg:grid-cols-2 gap-6 mb-6">
+                    <section class="bg-surface border border-line rounded-lg">
+                        <div class="px-5 py-3.5 border-b border-line"><h3 class="text-sm font-semibold text-ink">Moyennes physico-chimiques</h3></div>
+                        <div id="kpi-moys" class="px-5 py-2"></div>
+                    </section>
+                    <section class="bg-surface border border-line rounded-lg">
+                        <div class="px-5 py-3.5 border-b border-line"><h3 class="text-sm font-semibold text-ink">Derniers prélèvements</h3></div>
+                        <div id="kpi-rec" class="px-5 py-2"></div>
+                    </section>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                        <h3 class="font-semibold text-white mb-4">Moyennes physico-chimiques</h3>
-                        <div id="kpi-moys" class="space-y-1"></div>
+
+                <section class="bg-surface border-l-2 border-warn-600 border-y border-r border-line rounded-lg">
+                    <div class="px-5 py-3.5 border-b border-line flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <svg class="w-4 h-4 text-warn-600 shrink-0"><use href="#i-alert"/></svg>
+                            <h3 class="text-sm font-semibold text-ink">Communes à surveiller</h3>
+                            <span class="text-xs text-ink-3 truncate hidden sm:block">— au moins un prélèvement non conforme</span>
+                        </div>
+                        <span id="kpi-risque-count" class="text-xs font-semibold bg-warn-50 text-warn-600 px-2 py-0.5 rounded shrink-0">—</span>
                     </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 fade-in">
-                        <h3 class="font-semibold text-white mb-4">Derniers prélèvements</h3>
-                        <div id="kpi-rec" class="space-y-1"></div>
+                    <div id="kpi-risque" class="px-5 py-2"></div>
+                </section>
+            </div>
+
+            <!-- Onglet : Laboratoire -->
+            <div id="tab-lab" class="hidden fade-in max-w-6xl">
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <section class="bg-surface border border-line rounded-lg">
+                        <div class="px-5 py-3.5 border-b border-line">
+                            <h2 class="text-sm font-semibold text-ink">Banc d'essai du modèle</h2>
+                            <p class="text-xs text-ink-3 mt-0.5">Saisissez 9 mesures : le modèle prédit la potabilité. Aucune donnée n'est enregistrée.</p>
+                        </div>
+                        <div class="p-5">
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <button onclick="labPreset('saine')" class="inline-flex items-center gap-1.5 text-xs bg-ok-50 text-ok-600 border border-ok-600/20 hover:border-ok-600/50 rounded px-2.5 py-1.5 transition-colors">
+                                    <svg class="w-3.5 h-3.5"><use href="#i-drop"/></svg> Eau conforme
+                                </button>
+                                <button onclick="labPreset('degradee')" class="inline-flex items-center gap-1.5 text-xs bg-bad-50 text-bad-600 border border-bad-600/20 hover:border-bad-600/50 rounded px-2.5 py-1.5 transition-colors">
+                                    <svg class="w-3.5 h-3.5"><use href="#i-alert"/></svg> Eau dégradée
+                                </button>
+                                <button onclick="labPreset('random')" class="inline-flex items-center gap-1.5 text-xs border border-line hover:border-accent-500 hover:text-accent-600 text-ink-2 rounded px-2.5 py-1.5 transition-colors">
+                                    <svg class="w-3.5 h-3.5"><use href="#i-shuffle"/></svg> Aléatoire
+                                </button>
+                            </div>
+                            <div id="lab-fields" class="grid grid-cols-2 gap-3"></div>
+                            <button onclick="doPredictTest()"
+                                class="mt-5 w-full bg-accent-600 hover:bg-accent-700 text-white rounded-md py-2.5 text-sm font-semibold transition-colors">
+                                Prédire la potabilité
+                            </button>
+                        </div>
+                    </section>
+                    <div class="space-y-6">
+                        <section id="lab-result" class="bg-surface border border-line rounded-lg p-6 flex items-center justify-center min-h-[190px]">
+                            <p class="text-ink-3 text-sm text-center">Le résultat de la prédiction s'affichera ici.</p>
+                        </section>
+                        <section class="bg-surface border border-line rounded-lg">
+                            <div class="px-5 py-3.5 border-b border-line"><h3 class="text-sm font-semibold text-ink">Modèle entraîné</h3></div>
+                            <div id="lab-model" class="px-5 py-2 text-sm"></div>
+                        </section>
                     </div>
-                </div>
-                <!-- Communes à surveiller (non 100% potables) -->
-                <div class="bg-amber-950/30 border border-amber-700/60 rounded-2xl p-5 fade-in">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-semibold text-amber-300">⚠️ Communes à surveiller
-                            <span class="text-xs font-normal text-amber-500/80 ml-1">(au moins un prélèvement non conforme)</span>
-                        </h3>
-                        <span id="kpi-risque-count" class="text-xs font-semibold bg-amber-800/50 text-amber-200 px-2.5 py-1 rounded-full">—</span>
-                    </div>
-                    <div id="kpi-risque" class="space-y-1"></div>
                 </div>
             </div>
 
-            <!-- Tab: Laboratoire (test du modèle) -->
-            <div id="tab-lab" class="hidden fade-in">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                        <h2 class="font-semibold text-white mb-1">🧪 Tester le modèle d'IA</h2>
-                        <p class="text-xs text-slate-400 mb-4">Saisissez les 9 mesures physico-chimiques : le modèle entraîné prédit la potabilité. Rien n'est enregistré (banc d'essai).</p>
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            <button onclick="labPreset('saine')" class="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-800/40 text-emerald-200 hover:bg-emerald-800/60">💧 Eau saine</button>
-                            <button onclick="labPreset('degradee')" class="text-xs px-2.5 py-1.5 rounded-lg bg-red-800/40 text-red-200 hover:bg-red-800/60">☣️ Eau dégradée</button>
-                            <button onclick="labPreset('random')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-700 text-slate-200 hover:bg-slate-600">🎲 Aléatoire</button>
-                        </div>
-                        <div id="lab-fields" class="grid grid-cols-2 gap-3"></div>
-                        <button onclick="doPredictTest()" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl py-3 text-sm font-semibold transition-colors">Prédire la potabilité</button>
-                    </div>
-                    <div class="space-y-4">
-                        <div id="lab-result" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex items-center justify-center min-h-[190px]">
-                            <p class="text-slate-500 text-sm text-center">Le résultat de la prédiction s'affichera ici.</p>
-                        </div>
-                        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                            <h3 class="font-semibold text-white mb-3">Modèle entraîné</h3>
-                            <div id="lab-model" class="space-y-1 text-sm"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Prélèvements -->
+            <!-- Onglet : Prélèvements -->
             <div id="tab-prevs" class="hidden">
-                <!-- Filter bar -->
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 mb-4 fade-in">
+                <section class="bg-surface border border-line rounded-lg p-4 mb-6 no-print">
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Client</label>
-                            <input id="f-client" type="text" placeholder="COMM-042…"
-                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Client</label>
+                            <input id="f-client" type="text" placeholder="CLIENT-001"
+                                class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors"
                                 onkeydown="if(event.key==='Enter')loadAllPrevs()">
                         </div>
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Source</label>
-                            <select id="f-source"
-                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Source</label>
+                            <select id="f-source" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent-500 transition-colors">
                                 <option value="">Toutes</option>
-                                <option value="manual">Manuel</option>
-                                <option value="ocr">OCR</option>
+                                <option value="manual">Saisie</option>
+                                <option value="ocr">Fiche OCR</option>
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Date début</label>
-                            <input id="f-date-from" type="date"
-                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]">
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Date début</label>
+                            <input id="f-date-from" type="date" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent-500 transition-colors">
                         </div>
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Date fin</label>
-                            <input id="f-date-to" type="date"
-                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors [color-scheme:dark]">
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Date fin</label>
+                            <input id="f-date-to" type="date" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent-500 transition-colors">
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 mt-3">
-                        <button onclick="loadAllPrevs()"
-                            class="bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-                            Filtrer
-                        </button>
-                        <button onclick="resetFilters()"
-                            class="bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-                            Réinitialiser
-                        </button>
-                        <span id="f-count" class="text-xs text-slate-500 ml-auto"></span>
+                    <div class="flex items-center gap-2 mt-4">
+                        <button onclick="loadAllPrevs()" class="bg-accent-600 hover:bg-accent-700 text-white rounded-md px-4 py-2 text-sm font-medium transition-colors">Filtrer</button>
+                        <button onclick="resetFilters()" class="border border-line hover:bg-canvas text-ink-2 rounded-md px-4 py-2 text-sm font-medium transition-colors">Réinitialiser</button>
+                        <span id="f-count" class="text-xs text-ink-3 ml-auto tnum"></span>
                     </div>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl fade-in">
-                    <div id="e-prevs"></div>
-                </div>
+                </section>
+                <section class="bg-surface border border-line rounded-lg overflow-hidden"><div id="e-prevs"></div></section>
             </div>
 
-            <!-- Tab: Clients -->
+            <!-- Onglet : Clients -->
             <div id="tab-clis" class="hidden">
-                <div class="grid grid-cols-3 gap-4">
-                    <div class="col-span-2 bg-slate-800 border border-slate-700 rounded-2xl fade-in">
-                        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-                            <h2 class="font-semibold text-white">Comptes clients</h2>
-                            <button onclick="loadClients()" class="text-xs text-blue-400 hover:underline">Actualiser</button>
+                <div class="grid lg:grid-cols-3 gap-6">
+                    <section class="lg:col-span-2 bg-surface border border-line rounded-lg overflow-hidden">
+                        <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-ink">Comptes clients</h2>
+                            <button onclick="loadClients()" class="text-ink-3 hover:text-accent-600 transition-colors" title="Actualiser">
+                                <svg class="w-4 h-4"><use href="#i-refresh"/></svg>
+                            </button>
                         </div>
                         <div id="clis-list"></div>
-                    </div>
-                    <!-- Create client -->
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 h-fit fade-in">
-                        <h2 class="font-semibold text-white mb-4">➕ Nouveau client</h2>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Identifiant métier</label>
-                                <input id="nc-id" type="text" placeholder="COMM-042"
-                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
-                            </div>
-                            <div>
-                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Dénomination</label>
-                                <input id="nc-den" type="text" placeholder="Commune de Bordeaux"
-                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
-                            </div>
-                            <div>
-                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Adresse</label>
-                                <input id="nc-adr" type="text" placeholder="1 Place de la Mairie…"
-                                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
-                            </div>
+                    </section>
+                    <section class="bg-surface border border-line rounded-lg h-fit">
+                        <div class="px-5 py-3.5 border-b border-line flex items-center gap-2">
+                            <svg class="w-4 h-4 text-accent-600"><use href="#i-plus"/></svg>
+                            <h2 class="text-sm font-semibold text-ink">Nouveau client</h2>
                         </div>
-                        <button onclick="createClient()"
-                            class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                            Créer le compte
-                        </button>
-                        <div id="nc-res" class="hidden mt-3 text-xs rounded-lg px-3 py-2"></div>
-                    </div>
+                        <div class="p-5 space-y-3">
+                            <div>
+                                <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Identifiant métier</label>
+                                <input id="nc-id" type="text" placeholder="COMM-042" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm font-mono text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Dénomination</label>
+                                <input id="nc-den" type="text" placeholder="Commune de Bordeaux" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Adresse</label>
+                                <input id="nc-adr" type="text" placeholder="1 place de la Mairie" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
+                            </div>
+                            <button onclick="createClient()" class="w-full bg-accent-600 hover:bg-accent-700 text-white rounded-md py-2.5 text-sm font-semibold transition-colors">Créer le compte</button>
+                            <div id="nc-res" class="hidden text-xs rounded-md border px-3 py-2"></div>
+                        </div>
+                    </section>
                 </div>
             </div>
-            <!-- Tab: Dashboard par client -->
+
+            <!-- Onglet : Dashboard par client -->
             <div id="tab-cliDash" class="hidden fade-in">
-                <div class="grid grid-cols-4 gap-4 h-full" style="min-height:70vh">
-
-                    <!-- Liste clients -->
-                    <div class="col-span-1 bg-slate-800 border border-slate-700 rounded-2xl flex flex-col overflow-hidden">
-                        <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-                            <span class="text-sm font-semibold text-white">Clients</span>
-                            <button onclick="loadCliDashList()" class="text-xs text-blue-400 hover:underline">↺</button>
+                <div class="grid lg:grid-cols-4 gap-6" style="min-height:70vh">
+                    <section class="lg:col-span-1 bg-surface border border-line rounded-lg flex flex-col overflow-hidden">
+                        <div class="px-4 py-3.5 border-b border-line flex items-center justify-between">
+                            <span class="text-sm font-semibold text-ink">Clients</span>
+                            <button onclick="loadCliDashList()" class="text-ink-3 hover:text-accent-600 transition-colors" title="Actualiser">
+                                <svg class="w-3.5 h-3.5"><use href="#i-refresh"/></svg>
+                            </button>
                         </div>
-                        <input id="cd-search" type="text" placeholder="Rechercher…"
-                            oninput="filterCliList(this.value)"
-                            class="mx-3 mt-3 mb-2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                        <div class="p-3 border-b border-line">
+                            <div class="relative">
+                                <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-4"><use href="#i-search"/></svg>
+                                <input id="cd-search" type="text" placeholder="Rechercher" oninput="filterCliList(this.value)"
+                                    class="w-full bg-surface border border-line rounded-md pl-8 pr-3 py-1.5 text-xs text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
+                            </div>
+                        </div>
                         <div id="cd-list" class="flex-1 overflow-y-auto"></div>
-                    </div>
+                    </section>
 
-                    <!-- Dashboard individuel -->
-                    <div class="col-span-3 space-y-4">
-                        <!-- Placeholder vide -->
-                        <div id="cd-empty" class="h-full flex items-center justify-center">
-                            <div class="text-center text-slate-600">
-                                <div class="text-5xl mb-3">👈</div>
-                                <p class="text-sm">Sélectionnez un client pour voir son dashboard</p>
+                    <div class="lg:col-span-3 space-y-6">
+                        <div id="cd-empty" class="h-full flex items-center justify-center border border-dashed border-line rounded-lg">
+                            <div class="text-center text-ink-3 p-10">
+                                <svg class="w-8 h-8 mx-auto text-ink-4"><use href="#i-hand"/></svg>
+                                <p class="text-sm mt-3">Sélectionnez un client pour afficher sa fiche.</p>
                             </div>
                         </div>
 
-                        <!-- Contenu client sélectionné -->
-                        <div id="cd-content" class="hidden space-y-4">
-                            <!-- En-tête client -->
-                            <div class="bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4 flex items-center gap-4">
-                                <div id="cd-avatar" class="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg bg-blue-900/60 text-blue-300 shrink-0"></div>
+                        <div id="cd-content" class="hidden space-y-6">
+                            <section class="bg-surface border border-line rounded-lg px-6 py-4 flex items-center gap-4">
+                                <div id="cd-avatar" class="w-11 h-11 rounded-md flex items-center justify-center font-semibold bg-accent-50 text-accent-600 shrink-0"></div>
                                 <div class="flex-1 min-w-0">
-                                    <p id="cd-name" class="font-semibold text-white text-lg"></p>
-                                    <p id="cd-meta" class="text-xs text-slate-500"></p>
+                                    <p id="cd-name" class="font-semibold text-ink"></p>
+                                    <p id="cd-meta" class="text-xs text-ink-3 truncate"></p>
                                 </div>
-                                <span id="cd-status" class="text-xs px-2.5 py-1 rounded-full font-medium shrink-0"></span>
-                            </div>
+                                <span id="cd-status" class="text-xs px-2 py-0.5 rounded font-medium shrink-0"></span>
+                            </section>
 
-                            <!-- KPIs -->
-                            <div class="grid grid-cols-4 gap-3">
-                                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
-                                    <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Total</p>
-                                    <p class="text-2xl font-bold text-white" id="cd-kpi-tot">—</p>
-                                </div>
-                                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
-                                    <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Potables</p>
-                                    <p class="text-2xl font-bold text-green-400" id="cd-kpi-pot">—</p>
-                                </div>
-                                <div class="bg-slate-800 border border-slate-700 uppercase tracking-wide rounded-2xl p-4">
-                                    <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Non potables</p>
-                                    <p class="text-2xl font-bold text-red-400" id="cd-kpi-npot">—</p>
-                                </div>
-                                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
-                                    <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Taux</p>
-                                    <p class="text-2xl font-bold text-blue-400" id="cd-kpi-rate">—</p>
-                                </div>
-                            </div>
+                            <section class="grid grid-cols-4 gap-px bg-line border border-line rounded-lg overflow-hidden">
+                                <div class="bg-surface px-4 py-3"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Total</p><p class="text-xl font-semibold text-ink tnum mt-0.5" id="cd-kpi-tot">—</p></div>
+                                <div class="bg-surface px-4 py-3"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Conformes</p><p class="text-xl font-semibold text-ok-600 tnum mt-0.5" id="cd-kpi-pot">—</p></div>
+                                <div class="bg-surface px-4 py-3"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Non conf.</p><p class="text-xl font-semibold text-bad-600 tnum mt-0.5" id="cd-kpi-npot">—</p></div>
+                                <div class="bg-surface px-4 py-3"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Taux</p><p class="text-xl font-semibold text-accent-600 tnum mt-0.5" id="cd-kpi-rate">—</p></div>
+                            </section>
 
-                            <!-- Barre de potabilité -->
-                            <div class="bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4">
-                                <div class="flex justify-between text-xs text-slate-500 mb-2">
-                                    <span>Répartition potabilité</span>
-                                    <span id="cd-bar-label"></span>
+                            <section class="bg-surface border border-line rounded-lg px-6 py-4">
+                                <div class="flex justify-between text-xs text-ink-3 mb-2">
+                                    <span>Répartition de la potabilité</span>
+                                    <span id="cd-bar-label" class="tnum"></span>
                                 </div>
-                                <div class="h-3 rounded-full bg-slate-700 overflow-hidden">
-                                    <div id="cd-bar" class="h-full rounded-full bg-green-500 transition-all duration-700" style="width:0%"></div>
+                                <div class="h-2 rounded-full bg-canvas border border-line overflow-hidden">
+                                    <div id="cd-bar" class="h-full bg-ok-600 transition-all duration-700" style="width:0%"></div>
                                 </div>
-                            </div>
+                            </section>
 
-                            <!-- Sources + Prélèvements récents -->
-                            <div class="grid grid-cols-3 gap-4">
-                                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Sources</p>
-                                    <div id="cd-sources" class="space-y-2"></div>
-                                </div>
-                                <div class="col-span-2 bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
-                                    <div class="px-5 py-3 border-b border-slate-700 flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-white">Derniers prélèvements</span>
-                                    </div>
+                            <div class="grid lg:grid-cols-3 gap-6">
+                                <section class="bg-surface border border-line rounded-lg">
+                                    <div class="px-5 py-3.5 border-b border-line"><p class="text-sm font-semibold text-ink">Sources</p></div>
+                                    <div id="cd-sources" class="p-5 space-y-2.5"></div>
+                                </section>
+                                <section class="lg:col-span-2 bg-surface border border-line rounded-lg overflow-hidden">
+                                    <div class="px-5 py-3.5 border-b border-line"><p class="text-sm font-semibold text-ink">Derniers prélèvements</p></div>
                                     <div id="cd-prevs"></div>
-                                </div>
+                                </section>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab: Audit (exploit) -->
+            <!-- Onglet : Audit -->
             <div id="tab-audit" class="hidden fade-in">
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 mb-4">
+                <section class="bg-surface border border-line rounded-lg p-4 mb-6 no-print">
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Type acteur</label>
-                            <select id="aud-type" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500 transition-colors">
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Type d'acteur</label>
+                            <select id="aud-type" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink focus:outline-none focus:border-accent-500 transition-colors">
                                 <option value="">Tous</option>
                                 <option value="client">Client</option>
                                 <option value="expert">Expert</option>
                             </select>
                         </div>
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Acteur (ID)</label>
-                            <input id="aud-actor" type="text" placeholder="CLIENT-001…"
-                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Acteur</label>
+                            <input id="aud-actor" type="text" placeholder="CLIENT-001" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm font-mono text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
                         </div>
                         <div>
-                            <label class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Action</label>
-                            <input id="aud-action" type="text" placeholder="auth_failed…"
-                                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors"
-                                onkeydown="if(event.key==='Enter')loadAudit()">
+                            <label class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider block mb-1.5">Action</label>
+                            <input id="aud-action" type="text" placeholder="auth_failed" class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm font-mono text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors" onkeydown="if(event.key==='Enter')loadAudit()">
                         </div>
                         <div class="flex items-end">
-                            <button onclick="loadAudit()"
-                                class="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-                                Filtrer
-                            </button>
+                            <button onclick="loadAudit()" class="w-full bg-accent-600 hover:bg-accent-700 text-white rounded-md px-4 py-2 text-sm font-medium transition-colors">Filtrer</button>
                         </div>
                     </div>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-                        <h2 class="font-semibold text-white">Journal d'accès RGPD</h2>
-                        <span id="aud-count" class="text-xs text-slate-500"></span>
+                </section>
+                <section class="bg-surface border border-line rounded-lg overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-line flex items-center justify-between">
+                        <h2 class="text-sm font-semibold text-ink">Journal d'accès (RGPD)</h2>
+                        <span id="aud-count" class="text-xs text-ink-3 tnum"></span>
                     </div>
                     <div id="aud-table"></div>
-                    <div id="aud-pagination" class="px-6 py-3 border-t border-slate-700 hidden flex items-center gap-2 text-sm text-slate-400">
-                        <button id="aud-prev" onclick="auditPage(-1)" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40">←</button>
-                        <span id="aud-page-info"></span>
-                        <button id="aud-next" onclick="auditPage(1)"  class="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors disabled:opacity-40">→</button>
+                    <div id="aud-pagination" class="px-5 py-3 border-t border-line hidden items-center gap-2 text-sm text-ink-2">
+                        <button id="aud-prev" onclick="auditPage(-1)" class="border border-line rounded p-1.5 hover:bg-canvas transition-colors disabled:opacity-40">
+                            <svg class="w-3.5 h-3.5"><use href="#i-arrow-l"/></svg>
+                        </button>
+                        <span id="aud-page-info" class="text-xs tnum"></span>
+                        <button id="aud-next" onclick="auditPage(1)" class="border border-line rounded p-1.5 hover:bg-canvas transition-colors disabled:opacity-40">
+                            <svg class="w-3.5 h-3.5"><use href="#i-arrow-r"/></svg>
+                        </button>
                     </div>
-                </div>
+                </section>
             </div>
 
-            <!-- Tab: Métriques (exploit) -->
+            <!-- Onglet : Métriques -->
             <div id="tab-metrics" class="hidden fade-in">
-                <div class="grid grid-cols-4 gap-4 mb-4">
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Clients total</p>
-                        <p class="text-3xl font-bold text-white" id="mx-clients">—</p>
-                    </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Clients actifs</p>
-                        <p class="text-3xl font-bold text-blue-400" id="mx-actifs">—</p>
-                    </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Prélèvements</p>
-                        <p class="text-3xl font-bold text-white" id="mx-prevs">—</p>
-                    </div>
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Taux potabilité</p>
-                        <p class="text-3xl font-bold text-green-400" id="mx-rate">—</p>
-                    </div>
-                </div>
-                <div class="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-700">
-                        <h2 class="font-semibold text-white">Métriques par route</h2>
-                    </div>
+                <section class="grid grid-cols-2 lg:grid-cols-4 gap-px bg-line border border-line rounded-lg overflow-hidden mb-6">
+                    <div class="bg-surface px-5 py-4"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Clients</p><p class="text-2xl font-semibold text-ink tnum mt-1" id="mx-clients">—</p></div>
+                    <div class="bg-surface px-5 py-4"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Actifs</p><p class="text-2xl font-semibold text-accent-600 tnum mt-1" id="mx-actifs">—</p></div>
+                    <div class="bg-surface px-5 py-4"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Prélèvements</p><p class="text-2xl font-semibold text-ink tnum mt-1" id="mx-prevs">—</p></div>
+                    <div class="bg-surface px-5 py-4"><p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider">Taux potabilité</p><p class="text-2xl font-semibold text-ok-600 tnum mt-1" id="mx-rate">—</p></div>
+                </section>
+                <section class="bg-surface border border-line rounded-lg overflow-hidden">
+                    <div class="px-5 py-3.5 border-b border-line"><h2 class="text-sm font-semibold text-ink">Métriques par route</h2></div>
                     <div id="mx-routes"></div>
-                </div>
+                </section>
             </div>
 
-            <!-- Tab: API Explorer -->
+            <!-- Onglet : API -->
             <div id="tab-api" class="hidden fade-in">
-                <div class="flex items-center gap-3 mb-5">
-                    <input id="api-search" type="text" placeholder="Filtrer les routes…"
-                        oninput="filterApiRoutes(this.value)"
-                        class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
-                    <span id="api-spec-ver" class="text-xs text-slate-600 shrink-0"></span>
+                <div class="flex items-center gap-3 mb-5 no-print">
+                    <div class="relative flex-1">
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-4"><use href="#i-search"/></svg>
+                        <input id="api-search" type="text" placeholder="Filtrer les routes" oninput="filterApiRoutes(this.value)"
+                            class="w-full bg-surface border border-line rounded-md pl-9 pr-3 py-2.5 text-sm text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
+                    </div>
+                    <span id="api-spec-ver" class="text-xs text-ink-3 font-mono shrink-0"></span>
                 </div>
                 <div id="api-endpoints" class="space-y-6"></div>
             </div>
 
         </div>
-    </main>
+        </main>
+    </div>
 </div>
 
 <script>
 // ════════════════════════════════════════
-// STATE
+// ÉTAT
 // ════════════════════════════════════════
 let S = { type: null, key: null, profile: null, ltab: 'client' };
 try { const raw = localStorage.getItem('wf2'); if (raw) S = JSON.parse(raw); } catch(e) {}
 
+// Icône SVG (aucun emoji dans toute l'interface)
+const ic = (n, cls = 'w-4 h-4') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+
 // ════════════════════════════════════════
-// API HELPERS
+// APPELS API
 // ════════════════════════════════════════
 async function api(method, path, body) {
     const hdrs = { 'Content-Type': 'application/json' };
@@ -597,14 +620,15 @@ async function apiFile(path, fd) {
 }
 
 // ════════════════════════════════════════
-// AUTH
+// AUTHENTIFICATION
 // ════════════════════════════════════════
 function setLoginTab(t) {
     S.ltab = t;
-    const on  = 'flex-1 py-2 rounded-lg text-sm font-medium transition-all bg-slate-700 text-white shadow';
-    const off = 'flex-1 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-slate-200';
-    document.getElementById('ltab-client').className = t === 'client' ? on : off;
-    document.getElementById('ltab-expert').className = t === 'expert' ? on : off;
+    const on  = 'px-4 py-2.5 text-sm font-semibold text-accent-600 border-b-2 border-accent-600 -mb-px transition-colors';
+    const off = 'px-4 py-2.5 text-sm text-ink-3 hover:text-ink-2 border-b-2 border-transparent -mb-px transition-colors';
+    const c = document.getElementById('ltab-client'), e = document.getElementById('ltab-expert');
+    c.className = t === 'client' ? on : off;  c.textContent = 'Collectivité';
+    e.className = t === 'expert' ? on : off;  e.textContent = 'Expert';
     document.getElementById('ls-client').classList.toggle('hidden', t !== 'client');
     document.getElementById('ls-expert').classList.toggle('hidden', t !== 'expert');
 }
@@ -614,7 +638,7 @@ async function doLogin() {
     const key = (S.ltab === 'client'
         ? document.getElementById('inp-key')
         : document.getElementById('inp-tok')).value.trim();
-    if (!key) return showLoginErr('Entrez une clé ou un token.');
+    if (!key) return showLoginErr('Veuillez saisir une clé ou un jeton.');
 
     const btn = document.getElementById('login-btn');
     btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full spin"></span>';
@@ -633,7 +657,7 @@ async function doLogin() {
         showApp();
     } catch(e) {
         S.key = null; S.type = null; S.profile = null;
-        showLoginErr(e.error || 'Authentification échouée. Vérifiez votre clé.');
+        showLoginErr(e.error || 'Identification refusée. Vérifiez votre clé.');
     } finally {
         btn.textContent = 'Se connecter'; btn.disabled = false;
     }
@@ -641,7 +665,8 @@ async function doLogin() {
 
 function showLoginErr(msg) {
     const el = document.getElementById('login-err');
-    el.textContent = msg; el.classList.remove('hidden');
+    el.innerHTML = `${ic('alert','w-4 h-4 shrink-0 mt-0.5')}<span>${msg}</span>`;
+    el.classList.remove('hidden');
 }
 
 function logout() {
@@ -654,44 +679,67 @@ function logout() {
 }
 
 // ════════════════════════════════════════
-// APP SHELL
+// STRUCTURE DE L'APPLICATION
 // ════════════════════════════════════════
+const NAV = [
+    { id:'dash',    icon:'grid',     label:'Tableau de bord', sub:'Vue consolidée du parc',            role:'all' },
+    { id:'lab',     icon:'flask',    label:'Laboratoire',     sub:'Banc d\'essai du modèle',           role:'all' },
+    { id:'prevs',   icon:'list',     label:'Prélèvements',    sub:'Recherche et filtres',              role:'all' },
+    { id:'clis',    icon:'building', label:'Clients',         sub:'Comptes et clés d\'accès',          role:'all' },
+    { id:'cliDash', icon:'chart',    label:'Par client',      sub:'Fiche détaillée par collectivité',  role:'all' },
+    { id:'api',     icon:'plug',     label:'API',             sub:'Explorateur des endpoints',         role:'all' },
+    { id:'audit',   icon:'shield',   label:'Audit',           sub:'Journal d\'accès RGPD',             role:'exploit' },
+    { id:'metrics', icon:'pulse',    label:'Métriques',       sub:'Supervision par route',             role:'exploit' },
+];
+
+function renderNav() {
+    const isExploit = S.profile?.role === 'exploit';
+    document.getElementById('expert-tabs').innerHTML = NAV
+        .filter(n => n.role === 'all' || isExploit)
+        .map(n => `
+            <button onclick="showTab('${n.id}')" data-tab="${n.id}"
+                class="tab-btn w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors">
+                ${ic(n.icon, 'w-4 h-4 shrink-0')}<span>${n.label}</span>
+            </button>`).join('');
+}
+
 function showApp() {
     document.getElementById('pg-login').classList.add('hidden');
     document.getElementById('pg-app').classList.remove('hidden');
     pingHealth();
 
+    const badge = document.getElementById('hdr-badge');
     if (S.type === 'client') {
         const p = S.profile;
-        const badge = document.getElementById('hdr-badge');
-        badge.textContent = 'Client';
-        badge.className = 'text-xs px-2 py-0.5 rounded-full font-medium bg-blue-900/60 text-blue-300 shrink-0';
+        badge.textContent = 'Collectivité';
+        badge.className = 'text-[10px] uppercase tracking-wider font-semibold text-accent-400';
         document.getElementById('hdr-user').textContent = `${p.id_client} · ${p.denomination}`;
         document.getElementById('expert-tabs').classList.add('hidden');
+        document.getElementById('client-side').classList.remove('hidden');
         document.getElementById('vw-expert').classList.add('hidden');
         document.getElementById('vw-client').classList.remove('hidden');
+        setPageTitle('Dépôt de prélèvements', 'Saisie manuelle ou fiche de laboratoire');
         buildManualForm();
         loadClientStats();
         loadClientPrevs();
     } else {
         const role = S.profile?.role || 'analyste';
-        const badge = document.getElementById('hdr-badge');
-        badge.textContent = role;
-        badge.className = `text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-            role === 'exploit' ? 'bg-purple-900/60 text-purple-300' : 'bg-green-900/60 text-green-300'
-        }`;
+        badge.textContent = role === 'exploit' ? 'Exploitation' : 'Analyste';
+        badge.className = 'text-[10px] uppercase tracking-wider font-semibold text-accent-400';
         document.getElementById('hdr-user').textContent =
-            role === 'exploit' ? 'Responsable exploitation' : 'Analyste qualité';
+            role === 'exploit' ? 'Responsable d\'exploitation' : 'Analyste qualité';
+        document.getElementById('client-side').classList.add('hidden');
         document.getElementById('expert-tabs').classList.remove('hidden');
         document.getElementById('vw-client').classList.add('hidden');
         document.getElementById('vw-expert').classList.remove('hidden');
-        // Affiche les onglets exploit uniquement pour le rôle exploit
-        if (role === 'exploit') {
-            document.getElementById('tab-btn-audit').classList.remove('hidden');
-            document.getElementById('tab-btn-metrics').classList.remove('hidden');
-        }
+        renderNav();
         showTab('dash');
     }
+}
+
+function setPageTitle(t, s) {
+    document.getElementById('pg-title').textContent = t;
+    document.getElementById('pg-sub').textContent   = s || '';
 }
 
 function showTab(tab) {
@@ -699,19 +747,14 @@ function showTab(tab) {
         document.getElementById(`tab-${t}`)?.classList.add('hidden'));
     document.getElementById(`tab-${tab}`)?.classList.remove('hidden');
 
-    const isExploit = S.profile?.role === 'exploit';
+    const on  = 'tab-btn w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors bg-white/10 text-white font-medium';
+    const off = 'tab-btn w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors text-white/60 hover:bg-white/5 hover:text-white';
     document.querySelectorAll('.tab-btn').forEach(b => {
-        const exploitOnly = b.id === 'tab-btn-audit' || b.id === 'tab-btn-metrics';
-        if (exploitOnly && !isExploit) { b.classList.add('hidden'); return; }
-        b.classList.remove('hidden');
-        const active = b.dataset.tab === tab;
-        b.className = b.className
-            .replace(/\bbg-slate-700\b|\btext-white\b|\btext-slate-400\b|\bhover:text-slate-200\b|\bhover:bg-slate-700\/50\b/g, '')
-            .replace(/\s+/g, ' ').trim();
-        b.className += active
-            ? ' bg-slate-700 text-white'
-            : ' text-slate-400 hover:text-slate-200 hover:bg-slate-700/50';
+        b.className = b.dataset.tab === tab ? on : off;
     });
+
+    const meta = NAV.find(n => n.id === tab);
+    if (meta) setPageTitle(meta.label, meta.sub);
 
     if (tab === 'dash')    loadDashboard();
     if (tab === 'lab')     loadLab();
@@ -724,37 +767,35 @@ function showTab(tab) {
 }
 
 // ════════════════════════════════════════
-// HEALTH
+// SANTÉ DE L'API
 // ════════════════════════════════════════
 async function pingHealth() {
     try {
         await fetch('/health');
-        document.getElementById('h-dot').className = 'w-2 h-2 rounded-full bg-green-500';
-        document.getElementById('h-txt').textContent = 'API en ligne';
+        document.getElementById('h-dot').className = 'w-1.5 h-1.5 rounded-full bg-accent-400 shrink-0';
+        document.getElementById('h-txt').textContent = 'API disponible';
     } catch {
-        document.getElementById('h-dot').className = 'w-2 h-2 rounded-full bg-red-500';
-        document.getElementById('h-txt').textContent = 'API hors ligne';
+        document.getElementById('h-dot').className = 'w-1.5 h-1.5 rounded-full bg-red-400 shrink-0';
+        document.getElementById('h-txt').textContent = 'API injoignable';
     }
 }
 
 // ════════════════════════════════════════
-// SHARED UI HELPERS
+// COMPOSANTS PARTAGÉS
 // ════════════════════════════════════════
 function sourceBadge(src) {
-    if (!src) return '<span class="text-slate-600 text-xs">—</span>';
-    const label = src === 'manual' ? 'Saisie' : src === 'ocr' ? 'OCR' : src;
-    const cls   = src === 'ocr' ? 'bg-violet-900/50 text-violet-300' : 'bg-slate-700 text-slate-400';
-    return `<span class="text-xs px-2 py-0.5 rounded-full ${cls}">${label}</span>`;
+    if (!src) return '<span class="text-ink-4 text-xs">—</span>';
+    const label = src === 'manual' ? 'Saisie' : src === 'ocr' ? 'Fiche OCR' : src;
+    const cls   = src === 'ocr' ? 'bg-accent-50 text-accent-600' : 'bg-canvas text-ink-2 border border-line';
+    return `<span class="text-xs px-2 py-0.5 rounded ${cls}">${label}</span>`;
 }
 
 function potBadge(potable) {
-    if (potable == null) return '<span class="text-slate-600 text-xs">—</span>';
+    if (potable == null) return '<span class="text-ink-4 text-xs">—</span>';
     const ok = potable === 1;
-    return `<span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full
-        ${ok ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}">
-        <span class="w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-400' : 'bg-red-400'}"></span>
-        ${ok ? 'Potable' : 'Non potable'}
-    </span>`;
+    return `<span class="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded
+        ${ok ? 'bg-ok-50 text-ok-600' : 'bg-bad-50 text-bad-600'}">
+        ${ic(ok ? 'check' : 'alert', 'w-3 h-3')}${ok ? 'Potable' : 'Non potable'}</span>`;
 }
 
 function fdate(s) {
@@ -763,65 +804,72 @@ function fdate(s) {
 }
 
 function spinnerHtml() {
-    return '<div class="flex justify-center py-10"><div class="w-6 h-6 border-2 border-slate-700 border-t-blue-500 rounded-full spin"></div></div>';
+    return '<div class="flex justify-center py-10"><div class="w-5 h-5 border-2 border-line border-t-accent-600 rounded-full spin"></div></div>';
+}
+
+function emptyHtml(msg) {
+    return `<p class="text-ink-3 text-sm text-center py-10">${msg}</p>`;
+}
+function errorHtml(msg) {
+    return `<p class="text-bad-600 text-sm text-center py-8">${msg}</p>`;
 }
 
 function prevTable(items, withClient) {
-    if (!items.length) return '<p class="text-slate-500 text-sm text-center py-10">Aucun prélèvement.</p>';
+    if (!items.length) return emptyHtml('Aucun prélèvement.');
     const cols = withClient
         ? ['Client', 'Date', 'Lieu', 'Source', 'Résultat', 'Probabilité']
         : ['Date', 'Lieu', 'Source', 'Résultat', 'Probabilité'];
     return `<div class="overflow-x-auto">
     <table class="w-full text-sm">
-        <thead><tr class="text-xs text-slate-500 uppercase tracking-wide border-b border-slate-700">
-            ${cols.map(c => `<th class="text-left px-6 py-3">${c}</th>`).join('')}
+        <thead><tr class="text-[10px] text-ink-3 uppercase tracking-wider border-b border-line bg-canvas">
+            ${cols.map(c => `<th class="text-left px-5 py-2.5 font-semibold">${c}</th>`).join('')}
         </tr></thead>
         <tbody>${items.map(p => {
             const pred = p.prediction;
-            return `<tr class="border-b border-slate-700/50 hover:bg-slate-700/30 transition-colors">
-                ${withClient ? `<td class="px-6 py-3 font-medium text-slate-300">${p.client_id || '—'}</td>` : ''}
-                <td class="px-6 py-3 text-slate-400">${fdate(p.date_prelevement || p.created_at)}</td>
-                <td class="px-6 py-3 text-slate-300">${p.lieu || '—'}</td>
-                <td class="px-6 py-3">${sourceBadge(p.source)}</td>
-                <td class="px-6 py-3">${potBadge(pred?.potable)}</td>
-                <td class="px-6 py-3 text-slate-400">${pred ? `${(pred.probability * 100).toFixed(1)}%` : '—'}</td>
+            return `<tr class="border-b border-line last:border-0 hover:bg-canvas transition-colors">
+                ${withClient ? `<td class="px-5 py-2.5 font-mono text-xs text-ink-2">${p.client_id || '—'}</td>` : ''}
+                <td class="px-5 py-2.5 text-ink-2 tnum whitespace-nowrap">${fdate(p.date_prelevement || p.created_at)}</td>
+                <td class="px-5 py-2.5 text-ink">${p.lieu || '—'}</td>
+                <td class="px-5 py-2.5">${sourceBadge(p.source)}</td>
+                <td class="px-5 py-2.5">${potBadge(pred?.potable)}</td>
+                <td class="px-5 py-2.5 text-ink-2 tnum">${pred ? `${(pred.probability * 100).toFixed(1)} %` : '—'}</td>
             </tr>`;
         }).join('')}</tbody>
     </table></div>`;
 }
 
 // ════════════════════════════════════════
-// CLIENT — Manual form
+// CLIENT — Saisie manuelle
 // ════════════════════════════════════════
 const FIELDS = [
-    { k: 'ph',              l: 'pH',                   ph: '7.2',   hint: 'OMS : 6.5–8.5' },
-    { k: 'Hardness',        l: 'Dureté (mg/L)',         ph: '182.5'  },
+    { k: 'ph',              l: 'pH',                    ph: '7.2',   hint: 'OMS : 6,5 – 8,5' },
+    { k: 'Hardness',        l: 'Dureté (mg/L)',          ph: '182.5'  },
     { k: 'Solids',          l: 'Solides (ppm)',          ph: '18630'  },
     { k: 'Chloramines',     l: 'Chloramines (ppm)',      ph: '8.1',   hint: 'OMS : < 4' },
     { k: 'Sulfate',         l: 'Sulfate (mg/L)',         ph: '310'    },
-    { k: 'Conductivity',    l: 'Conductivité (μS/cm)',   ph: '415'    },
+    { k: 'Conductivity',    l: 'Conductivité (µS/cm)',   ph: '415'    },
     { k: 'Organic_carbon',  l: 'Carbone org. (ppm)',     ph: '14.2'   },
-    { k: 'Trihalomethanes', l: 'Trihalométhanes (μg/L)', ph: '66.4',  hint: 'OMS : < 80' },
+    { k: 'Trihalomethanes', l: 'Trihalométhanes (µg/L)', ph: '66.4',  hint: 'OMS : < 80' },
     { k: 'Turbidity',       l: 'Turbidité (NTU)',        ph: '3.8',   hint: 'OMS : < 5' },
 ];
 
 function buildManualForm() {
     document.getElementById('manual-fields').innerHTML = FIELDS.map(f => `
         <div>
-            <label class="text-xs font-semibold text-slate-500 block mb-1">${f.l}</label>
+            <label class="text-xs font-medium text-ink-2 block mb-1">${f.l}</label>
             <input id="mf-${f.k}" type="number" step="any" placeholder="${f.ph}"
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-colors">
-            ${f.hint ? `<p class="text-[10px] text-slate-600 mt-0.5">${f.hint}</p>` : ''}
-        </div>
-    `).join('');
+                class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink tnum placeholder-ink-4 focus:outline-none focus:border-accent-500 transition-colors">
+            ${f.hint ? `<p class="text-[10px] text-ink-3 mt-0.5">${f.hint}</p>` : ''}
+        </div>`).join('');
 }
 
+// Remplissage aléatoire réaliste (60–140 % de la valeur de référence)
 function randomManual() {
-    // Remplissage aléatoire réaliste : 60 % à 140 % des valeurs de référence (placeholders).
     FIELDS.forEach(f => {
-        const base = parseFloat(f.ph) || 1;
-        const el = document.getElementById(`mf-${f.k}`);
-        if (el) el.value = +(base * (0.6 + Math.random() * 0.8)).toFixed(2);
+        const base = parseFloat(f.ph);
+        const val  = +(base * (0.6 + Math.random() * 0.8)).toFixed(2);
+        const el   = document.getElementById('mf-' + f.k);
+        if (el) el.value = val;
     });
 }
 
@@ -834,63 +882,64 @@ async function submitManual() {
         if (v !== '' && v != null) body[f.k] = parseFloat(v);
     });
     if (!Object.keys(body).length) {
-        res.innerHTML = '⚠ Renseignez au moins quelques mesures.';
-        res.className = 'mt-4 rounded-xl p-4 text-sm text-center bg-yellow-900/30 border border-yellow-800 text-yellow-300';
+        res.innerHTML = `<div class="flex items-center justify-center gap-2 text-warn-600 text-sm">${ic('alert')}Renseignez au moins quelques mesures.</div>`;
+        res.className = 'mt-4 rounded-md border border-warn-600/25 bg-warn-50 p-4';
         res.classList.remove('hidden'); return;
     }
-    btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full spin mr-1.5"></span>Analyse…';
+    btn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full spin"></span>';
     btn.disabled = true; res.classList.add('hidden');
     try {
         const d = await api('POST', '/ingest/manual', body);
         const p = d.prediction; const ok = p.potable === 1;
         const pct = (p.probability * 100).toFixed(1);
         res.innerHTML = `
-            <div class="text-3xl mb-2">${ok ? '✅' : '❌'}</div>
-            <div class="font-bold text-lg ${ok ? 'text-green-400' : 'text-red-400'}">${p.label}</div>
-            <div class="text-xs text-slate-400 mt-1">Probabilité de potabilité : ${pct}%</div>
-            <div class="mt-2.5 h-1.5 rounded-full bg-slate-700 overflow-hidden">
-                <div class="h-full rounded-full ${ok ? 'bg-green-500' : 'bg-red-500'}" style="width:${pct}%"></div>
+            <div class="flex items-center justify-center gap-2 ${ok ? 'text-ok-600' : 'text-bad-600'}">
+                ${ic(ok ? 'check' : 'alert', 'w-5 h-5')}
+                <span class="font-semibold">${p.label}</span>
             </div>
-            <div class="text-[10px] text-slate-600 mt-2">ID : ${(d.prelevement_id||'').slice(0,8)}…</div>`;
-        res.className = `mt-4 rounded-xl p-4 ${ok ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`;
+            <div class="text-xs text-ink-3 mt-1.5 tnum">Probabilité de potabilité : ${pct} %</div>
+            <div class="mt-3 h-1.5 rounded-full bg-canvas border border-line overflow-hidden">
+                <div class="h-full ${ok ? 'bg-ok-600' : 'bg-bad-600'}" style="width:${pct}%"></div>
+            </div>
+            <div class="text-[10px] text-ink-4 mt-2 font-mono">Réf. ${(d.prelevement_id||'').slice(0,8)}</div>`;
+        res.className = `mt-4 rounded-md border p-4 text-center ${ok ? 'border-ok-600/25 bg-ok-50' : 'border-bad-600/25 bg-bad-50'}`;
         res.classList.remove('hidden');
         loadClientPrevs(); loadClientStats();
     } catch(e) {
-        res.innerHTML = `⚠ ${e.error || 'Erreur lors de l\'analyse.'}`;
-        res.className = 'mt-4 rounded-xl p-4 text-sm text-center bg-red-900/30 border border-red-800 text-red-300';
+        res.innerHTML = `<div class="flex items-center justify-center gap-2 text-bad-600 text-sm">${ic('alert')}${e.error || 'Erreur lors de l\'analyse.'}</div>`;
+        res.className = 'mt-4 rounded-md border border-bad-600/25 bg-bad-50 p-4';
         res.classList.remove('hidden');
-    } finally { btn.textContent = 'Analyser'; btn.disabled = false; }
+    } finally { btn.textContent = 'Analyser le prélèvement'; btn.disabled = false; }
 }
 
-async function submitOcr(input) {          // déclenché par le clic (champ fichier)
-    const file = input.files[0];
-    input.value = '';                       // réautorise le renvoi du même fichier
-    return submitOcrFile(file);
-}
-
-// ─── Glisser-déposer (drag & drop) ────────────────────────────────────────────
+// ── Glisser-déposer de la fiche ──────────────────────────────────────────────
 function ocrDragOver(e) {
-    e.preventDefault();                     // indispensable : sinon le navigateur ouvre le fichier
-    document.getElementById('drop-zone').classList.add('border-blue-500', 'bg-blue-500/5');
+    e.preventDefault();
+    document.getElementById('drop-zone').classList.add('border-accent-500', 'bg-accent-50');
 }
 function ocrDragLeave(e) {
     e.preventDefault();
-    document.getElementById('drop-zone').classList.remove('border-blue-500', 'bg-blue-500/5');
+    document.getElementById('drop-zone').classList.remove('border-accent-500', 'bg-accent-50');
 }
 function ocrDrop(e) {
     e.preventDefault();
     ocrDragLeave(e);
-    const files = e.dataTransfer && e.dataTransfer.files;
+    const files = e.dataTransfer?.files;
     if (files && files.length) submitOcrFile(files[0]);
 }
+function submitOcr(input) {
+    const file = input.files[0];
+    if (file) submitOcrFile(file, input);
+}
 
-async function submitOcrFile(file) {        // logique commune clic + glisser-déposer
+async function submitOcrFile(file, input) {
     if (!file) return;
     const zone = document.getElementById('drop-zone');
     const res  = document.getElementById('ocr-res');
-    zone.innerHTML = `<div class="py-6 text-center">
-        <div class="w-6 h-6 border-2 border-slate-700 border-t-blue-500 rounded-full spin mx-auto mb-2"></div>
-        <p class="text-xs text-slate-500">Extraction en cours…</p></div>`;
+    const original = zone.innerHTML;
+    zone.innerHTML = `<div class="py-4 text-center">
+        <div class="w-5 h-5 border-2 border-line border-t-accent-600 rounded-full spin mx-auto mb-2"></div>
+        <p class="text-xs text-ink-3">Extraction en cours…</p></div>`;
     res.classList.add('hidden');
     try {
         const fd = new FormData(); fd.append('file', file);
@@ -898,27 +947,24 @@ async function submitOcrFile(file) {        // logique commune clic + glisser-d�
         const p  = d.prediction;
         if (p) {
             const ok = p.potable === 1;
-            res.innerHTML = `<div class="font-semibold ${ok ? 'text-green-400' : 'text-red-400'} mb-1">
-                ${ok ? '✅' : '❌'} ${p.label} — ${(p.probability * 100).toFixed(1)}%</div>
-                <div class="text-[10px] text-slate-600">ID : ${(d.prelevement_id||'').slice(0,8)}…</div>`;
-            res.className = `mt-4 rounded-xl p-3 text-sm ${ok
-                ? 'bg-green-900/30 border border-green-800'
-                : 'bg-red-900/30 border border-red-800'}`;
+            res.innerHTML = `<div class="flex items-center gap-2 ${ok ? 'text-ok-600' : 'text-bad-600'} font-medium">
+                ${ic(ok ? 'check' : 'alert')}${p.label} — ${(p.probability * 100).toFixed(1)} %</div>
+                <div class="text-[10px] text-ink-4 mt-1 font-mono">Réf. ${(d.prelevement_id||'').slice(0,8)}</div>`;
+            res.className = `mt-4 rounded-md border p-3 text-sm ${ok ? 'border-ok-600/25 bg-ok-50' : 'border-bad-600/25 bg-bad-50'}`;
         } else {
-            res.innerHTML = `<p class="text-yellow-300">📄 OCR réussi — prédiction impossible (mesures insuffisantes)</p>
-                <p class="text-[10px] text-slate-600 mt-1">ID : ${(d.prelevement_id||'').slice(0,8)}…</p>`;
-            res.className = 'mt-4 rounded-xl p-3 text-sm bg-yellow-900/30 border border-yellow-800';
+            res.innerHTML = `<div class="flex items-center gap-2 text-warn-600">${ic('file')}Fiche lue — prédiction impossible (mesures insuffisantes)</div>
+                <div class="text-[10px] text-ink-4 mt-1 font-mono">Réf. ${(d.prelevement_id||'').slice(0,8)}</div>`;
+            res.className = 'mt-4 rounded-md border border-warn-600/25 bg-warn-50 p-3 text-sm';
         }
         res.classList.remove('hidden');
         loadClientPrevs(); loadClientStats();
     } catch(e) {
-        res.innerHTML = `⚠ ${e.error || 'Erreur OCR.'}`;
-        res.className = 'mt-4 rounded-xl p-3 text-sm bg-red-900/30 border border-red-800 text-red-300';
+        res.innerHTML = `<div class="flex items-center gap-2 text-bad-600">${ic('alert')}${e.error || 'Erreur de lecture.'}</div>`;
+        res.className = 'mt-4 rounded-md border border-bad-600/25 bg-bad-50 p-3 text-sm';
         res.classList.remove('hidden');
     } finally {
-        zone.innerHTML = `<div class="text-4xl mb-2">📁</div>
-            <p class="text-sm text-slate-400">Glisser-déposer ou cliquer</p>
-            <p class="text-xs text-slate-600 mt-1">PDF · PNG · JPG · max 20 Mo</p>`;
+        zone.innerHTML = original;
+        if (input) input.value = '';
     }
 }
 
@@ -939,12 +985,12 @@ async function loadClientPrevs() {
         const d = await api('GET', '/me/prelevements?per_page=20');
         el.innerHTML = prevTable(d.items || [], false);
         if ((d.total || 0) > 20)
-            el.innerHTML += `<p class="text-xs text-slate-600 text-center py-3">${d.total} prélèvements · page ${d.page}/${d.pages}</p>`;
-    } catch(e) { el.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Erreur de chargement.</p>'; }
+            el.innerHTML += `<p class="text-xs text-ink-3 text-center py-3 border-t border-line tnum">${d.total} prélèvements — page ${d.page}/${d.pages}</p>`;
+    } catch(e) { el.innerHTML = errorHtml('Erreur de chargement.'); }
 }
 
 // ════════════════════════════════════════
-// EXPERT — Dashboard
+// EXPERT — Tableau de bord
 // ════════════════════════════════════════
 async function loadDashboard() {
     try {
@@ -953,29 +999,28 @@ async function loadDashboard() {
         document.getElementById('kpi-pred').textContent = d.total_predictions ?? '—';
         document.getElementById('kpi-clis').textContent = d.clients_actifs ?? '—';
         document.getElementById('kpi-rate').textContent = d.potable_rate != null
-            ? `${(d.potable_rate * 100).toFixed(1)}%` : '—';
+            ? `${(d.potable_rate * 100).toFixed(1)} %` : '—';
 
         const MLAB = { ph: 'pH', turbidity: 'Turbidité', conductivity: 'Conductivité', chloramines: 'Chloramines', hardness: 'Dureté' };
         const moys = d.moyennes || {};
         document.getElementById('kpi-moys').innerHTML = Object.entries(MLAB).map(([k, l]) => `
-            <div class="flex justify-between items-center py-2 border-b border-slate-700/50 last:border-0">
-                <span class="text-sm text-slate-400">${l}</span>
-                <span class="text-sm font-medium text-slate-200">${moys[k] != null ? moys[k] : '—'}</span>
+            <div class="flex justify-between items-center py-2.5 border-b border-line last:border-0">
+                <span class="text-sm text-ink-2">${l}</span>
+                <span class="text-sm font-medium text-ink tnum">${moys[k] != null ? moys[k] : '—'}</span>
             </div>`).join('');
 
         const recs = d.recents || [];
         document.getElementById('kpi-rec').innerHTML = recs.length
             ? recs.slice(0, 8).map(p => `
-                <div class="flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0 gap-2">
+                <div class="flex items-center justify-between py-2.5 border-b border-line last:border-0 gap-2">
                     <div class="min-w-0">
-                        <span class="text-sm text-slate-300 font-medium">${p.client_id || '—'}</span>
-                        <span class="text-xs text-slate-500 ml-1.5">${p.lieu || ''}</span>
+                        <span class="text-sm text-ink font-medium font-mono text-xs">${p.client_id || '—'}</span>
+                        <span class="text-xs text-ink-3 ml-1.5">${p.lieu || ''}</span>
                     </div>
                     ${potBadge(p.prediction?.potable)}
                 </div>`).join('')
-            : '<p class="text-slate-500 text-sm text-center py-4">Aucun prélèvement.</p>';
+            : emptyHtml('Aucun prélèvement.');
 
-        // Communes à surveiller (potabilité < 100%)
         const risque = d.clients_a_risque || [];
         const cntEl = document.getElementById('kpi-risque-count');
         if (cntEl) cntEl.textContent = `${risque.length} commune${risque.length > 1 ? 's' : ''}`;
@@ -983,23 +1028,23 @@ async function loadDashboard() {
             ? risque.map(c => {
                 const pct = (c.potable_rate * 100).toFixed(0);
                 return `
-                <div class="flex items-center justify-between py-2 border-b border-amber-800/30 last:border-0 gap-2">
+                <div class="flex items-center justify-between py-2.5 border-b border-line last:border-0 gap-2">
                     <div class="min-w-0">
-                        <span class="text-sm text-amber-100 font-medium">${c.denomination || c.id_client}</span>
-                        <span class="text-xs text-amber-500/70 ml-1.5">${c.id_client}</span>
+                        <span class="text-sm text-ink font-medium">${c.denomination || c.id_client}</span>
+                        <span class="text-xs text-ink-3 ml-1.5 font-mono">${c.id_client}</span>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <span class="text-xs text-red-300 font-semibold">${c.non_potables}/${c.total} non conformes</span>
-                        <span class="text-xs font-bold px-2 py-0.5 rounded-full ${pct >= 90 ? 'bg-amber-800/50 text-amber-200' : 'bg-red-800/50 text-red-200'}">${pct}% potable</span>
+                        <span class="text-xs text-bad-600 tnum">${c.non_potables}/${c.total} non conformes</span>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded tnum ${pct >= 90 ? 'bg-warn-50 text-warn-600' : 'bg-bad-50 text-bad-600'}">${pct} %</span>
                     </div>
                 </div>`;
               }).join('')
-            : '<p class="text-emerald-400/80 text-sm text-center py-4">✓ Toutes les communes sont à 100% de conformité.</p>';
+            : `<div class="flex items-center justify-center gap-2 text-ok-600 text-sm py-4">${ic('check')}Toutes les communes sont conformes.</div>`;
     } catch(e) {}
 }
 
 // ════════════════════════════════════════
-// EXPERT — Laboratoire (test du modèle)
+// EXPERT — Laboratoire
 // ════════════════════════════════════════
 const LAB_FEATURES = [
     { k: 'ph',              l: 'pH',              u: '' },
@@ -1012,39 +1057,42 @@ const LAB_FEATURES = [
     { k: 'Trihalomethanes', l: 'Trihalométhanes', u: 'µg/L' },
     { k: 'Turbidity',       l: 'Turbidité',       u: 'NTU' },
 ];
-// Exemples réels du jeu de données que le modèle classe clairement (démo)
+// Exemples réels du jeu de données que le modèle classe clairement (démonstration)
 const LAB_PRESETS = {
     saine:    { ph: 7.04, Hardness: 161.25, Solids: 23469.22, Chloramines: 8.39, Sulfate: 331.84, Conductivity: 448.79, Organic_carbon: 13.84, Trihalomethanes: 70.21, Turbidity: 3.6 },
     degradee: { ph: 7.04, Hardness: 226.77, Solids: 39942.95, Chloramines: 8.59, Sulfate: 333.39, Conductivity: 538.62, Organic_carbon: 13.74, Trihalomethanes: 66.54, Turbidity: 4.86 },
 };
+
 function labFieldsHtml(vals) {
     return LAB_FEATURES.map(f => `
         <div>
-            <label class="block text-xs text-slate-400 mb-1">${f.l} ${f.u ? `<span class="text-slate-600">(${f.u})</span>` : ''}</label>
+            <label class="block text-xs font-medium text-ink-2 mb-1">${f.l} ${f.u ? `<span class="text-ink-4">(${f.u})</span>` : ''}</label>
             <input id="lab-${f.k}" type="number" step="any" value="${vals[f.k]}"
-                class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                class="w-full bg-surface border border-line rounded-md px-3 py-2 text-sm text-ink tnum focus:outline-none focus:border-accent-500 transition-colors">
         </div>`).join('');
 }
+
 async function loadLab() {
     if (!document.getElementById('lab-ph'))
         document.getElementById('lab-fields').innerHTML = labFieldsHtml(LAB_PRESETS.saine);
     try {
         const m = await api('GET', '/analyste/model-info');
         const met = m.metrics || {};
-        const fmtPct = v => v != null ? (v * 100).toFixed(1) + '%' : '—';
+        const fmtPct = v => v != null ? (v * 100).toFixed(1) + ' %' : '—';
         const rows = [
             ['Algorithme',    m.algorithme || '—'],
             ['Version',       m.model_version || '—'],
-            ['Accuracy',      fmtPct(met['Accuracy'])],
+            ['Exactitude',    fmtPct(met['Accuracy'])],
             ['F1-score',      met['F1-Score'] != null ? met['F1-Score'].toFixed(3) : '—'],
             ['ROC-AUC',       met['ROC-AUC'] != null ? met['ROC-AUC'].toFixed(3) : '—'],
             ['ROC-AUC (validation croisée)', m.extra?.cv_mean != null ? m.extra.cv_mean.toFixed(3) : '—'],
         ];
         document.getElementById('lab-model').innerHTML = rows.map(([k, v]) => `
-            <div class="flex justify-between border-b border-slate-700/50 py-1.5 last:border-0">
-                <span class="text-slate-400">${k}</span><span class="text-slate-200 font-medium">${v}</span></div>`).join('');
+            <div class="flex justify-between border-b border-line py-2.5 last:border-0">
+                <span class="text-ink-2">${k}</span><span class="text-ink font-medium tnum">${v}</span></div>`).join('');
     } catch(e) {}
 }
+
 function labPreset(kind) {
     let vals;
     if (kind === 'random') {
@@ -1053,6 +1101,7 @@ function labPreset(kind) {
     } else vals = LAB_PRESETS[kind];
     LAB_FEATURES.forEach(f => { const el = document.getElementById('lab-' + f.k); if (el) el.value = vals[f.k]; });
 }
+
 async function doPredictTest() {
     const body = {};
     for (const f of LAB_FEATURES) body[f.k] = parseFloat(document.getElementById('lab-' + f.k).value);
@@ -1065,17 +1114,19 @@ async function doPredictTest() {
         const pct = (p.probability * 100).toFixed(1);
         box.innerHTML = `
             <div class="text-center w-full">
-                <div class="text-5xl mb-2">${pot ? '💧' : '⚠️'}</div>
-                <div class="text-2xl font-bold ${pot ? 'text-emerald-400' : 'text-red-400'}">${p.label}</div>
-                <div class="mt-5">
-                    <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Probabilité de potabilité</span><span class="font-semibold">${pct}%</span></div>
-                    <div class="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
-                        <div class="h-3 rounded-full ${pot ? 'bg-emerald-500' : 'bg-red-500'}" style="width:${pct}%"></div>
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-full ${pot ? 'bg-ok-50 text-ok-600' : 'bg-bad-50 text-bad-600'}">
+                    ${ic(pot ? 'drop' : 'alert', 'w-6 h-6')}
+                </div>
+                <div class="text-xl font-semibold mt-3 ${pot ? 'text-ok-600' : 'text-bad-600'}">${p.label}</div>
+                <div class="mt-5 text-left">
+                    <div class="flex justify-between text-xs text-ink-3 mb-1.5"><span>Probabilité de potabilité</span><span class="font-semibold tnum">${pct} %</span></div>
+                    <div class="w-full bg-canvas border border-line rounded-full h-2 overflow-hidden">
+                        <div class="h-full ${pot ? 'bg-ok-600' : 'bg-bad-600'}" style="width:${pct}%"></div>
                     </div>
                 </div>
             </div>`;
     } catch(e) {
-        box.innerHTML = `<p class="text-red-400 text-sm text-center">${e.error || 'Erreur de prédiction'}</p>`;
+        box.innerHTML = errorHtml(e.error || 'Erreur de prédiction');
     }
 }
 
@@ -1104,8 +1155,8 @@ async function loadAllPrevs() {
         const cnt = document.getElementById('f-count');
         if (cnt) cnt.textContent = total > 0 ? `${total} résultat${total > 1 ? 's' : ''}` : 'Aucun résultat';
         if (total > 50)
-            el.innerHTML += `<p class="text-xs text-slate-600 text-center py-3">${total} prélèvements — affichage limité à 50</p>`;
-    } catch(e) { el.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Erreur.</p>'; }
+            el.innerHTML += `<p class="text-xs text-ink-3 text-center py-3 border-t border-line tnum">${total} prélèvements — affichage limité à 50</p>`;
+    } catch(e) { el.innerHTML = errorHtml('Erreur de chargement.'); }
 }
 
 function resetFilters() {
@@ -1125,33 +1176,31 @@ async function loadClients() {
     el.innerHTML = spinnerHtml();
     try {
         const clients = await api('GET', '/admin/clients');
-        if (!clients.length) {
-            el.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">Aucun client.</p>'; return;
-        }
+        if (!clients.length) { el.innerHTML = emptyHtml('Aucun client.'); return; }
         el.innerHTML = clients.map(c => `
-            <div class="px-5 py-4 border-b border-slate-700/50 last:border-0 flex items-center justify-between hover:bg-slate-700/30 transition-colors gap-3">
+            <div class="px-5 py-3.5 border-b border-line last:border-0 flex items-center justify-between hover:bg-canvas transition-colors gap-3">
                 <div class="flex items-center gap-3 min-w-0">
-                    <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0
-                        ${c.actif ? 'bg-blue-900/60 text-blue-300' : 'bg-slate-700 text-slate-500'}">
-                        ${(c.denomination || '?')[0]}
+                    <div class="w-9 h-9 rounded-md flex items-center justify-center font-semibold text-sm shrink-0
+                        ${c.actif ? 'bg-accent-50 text-accent-600' : 'bg-canvas text-ink-4 border border-line'}">
+                        ${(c.denomination || '?')[0].toUpperCase()}
                     </div>
                     <div class="min-w-0">
-                        <p class="font-medium text-slate-200 truncate">${c.denomination}</p>
-                        <p class="text-xs text-slate-500">${c.id_client} · ${c.nb_prelevements} prélèvement${c.nb_prelevements !== 1 ? 's' : ''}</p>
+                        <p class="font-medium text-ink truncate text-sm">${c.denomination}</p>
+                        <p class="text-xs text-ink-3 font-mono">${c.id_client} · ${c.nb_prelevements} prélèvement${c.nb_prelevements !== 1 ? 's' : ''}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <span class="text-xs px-2 py-0.5 rounded-full ${c.actif ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-slate-500'}">
+                    <span class="text-xs px-2 py-0.5 rounded ${c.actif ? 'bg-ok-50 text-ok-600' : 'bg-canvas text-ink-3 border border-line'}">
                         ${c.actif ? 'Actif' : 'Inactif'}
                     </span>
-                    <span class="text-xs text-slate-600 font-mono hidden sm:block">${c.api_key_hint || '—'}</span>
+                    <span class="text-xs text-ink-4 font-mono hidden sm:block">${c.api_key_hint || '—'}</span>
                     <button onclick="genKey('${c.id}','${c.id_client}')"
-                        class="text-xs bg-slate-700 hover:bg-blue-900/60 hover:text-blue-300 text-slate-400 px-2.5 py-1.5 rounded-lg transition-colors">
-                        🔑 Nouvelle clé
+                        class="inline-flex items-center gap-1.5 text-xs border border-line hover:border-accent-500 hover:text-accent-600 text-ink-2 px-2.5 py-1.5 rounded transition-colors">
+                        ${ic('key','w-3.5 h-3.5')} Nouvelle clé
                     </button>
                 </div>
             </div>`).join('');
-    } catch(e) { el.innerHTML = '<p class="text-red-400 text-sm text-center py-8">Erreur.</p>'; }
+    } catch(e) { el.innerHTML = errorHtml('Erreur de chargement.'); }
 }
 
 async function createClient() {
@@ -1160,20 +1209,20 @@ async function createClient() {
     const adr = document.getElementById('nc-adr').value.trim();
     const res = document.getElementById('nc-res');
     if (!id || !den || !adr) {
-        res.textContent = '⚠ Tous les champs sont requis.';
-        res.className = 'mt-3 text-xs rounded-lg px-3 py-2 bg-yellow-900/30 border border-yellow-800 text-yellow-300';
+        res.innerHTML = `<span class="flex items-center gap-1.5">${ic('alert','w-3.5 h-3.5')}Tous les champs sont requis.</span>`;
+        res.className = 'text-xs rounded-md border border-warn-600/25 bg-warn-50 text-warn-600 px-3 py-2';
         res.classList.remove('hidden'); return;
     }
     try {
         await api('POST', '/admin/clients', { id_client: id, denomination: den, adresse: adr, rgpd_consent: true });
-        res.textContent = `✅ Client "${id}" créé. Cliquez sur "Nouvelle clé" pour générer sa clé API.`;
-        res.className = 'mt-3 text-xs rounded-lg px-3 py-2 bg-green-900/30 border border-green-800 text-green-300';
+        res.innerHTML = `<span class="flex items-center gap-1.5">${ic('check','w-3.5 h-3.5')}Client « ${id} » créé. Générez sa clé d'accès.</span>`;
+        res.className = 'text-xs rounded-md border border-ok-600/25 bg-ok-50 text-ok-600 px-3 py-2';
         res.classList.remove('hidden');
         ['nc-id', 'nc-den', 'nc-adr'].forEach(i => document.getElementById(i).value = '');
         loadClients();
     } catch(e) {
-        res.textContent = `⚠ ${e.error || 'Erreur.'}`;
-        res.className = 'mt-3 text-xs rounded-lg px-3 py-2 bg-red-900/30 border border-red-800 text-red-300';
+        res.innerHTML = `<span class="flex items-center gap-1.5">${ic('alert','w-3.5 h-3.5')}${e.error || 'Erreur.'}</span>`;
+        res.className = 'text-xs rounded-md border border-bad-600/25 bg-bad-50 text-bad-600 px-3 py-2';
         res.classList.remove('hidden');
     }
 }
@@ -1182,24 +1231,22 @@ async function genKey(clientId, clientLabel) {
     try {
         const d = await api('POST', `/admin/clients/${clientId}/apikey`);
         openModal(
-            `🔑 Clé API — ${d.id_client}`,
-            '⚠ Copiez cette clé maintenant. Elle ne sera plus jamais affichée.',
-            `<div class="bg-slate-950 border border-slate-700 rounded-xl p-4 font-mono text-sm text-green-300 break-all select-all leading-relaxed">
-                ${d.api_key}
-            </div>
+            `Clé d'accès — ${d.id_client}`,
+            'Copiez cette clé maintenant : elle ne sera plus jamais affichée.',
+            `<div class="bg-canvas border border-line rounded-md p-4 font-mono text-sm text-accent-600 break-all select-all leading-relaxed">${d.api_key}</div>
             <button id="copy-btn"
-                onclick="navigator.clipboard.writeText('${d.api_key}').then(()=>{ document.getElementById('copy-btn').textContent='✅ Copié !'; })"
-                class="mt-3 w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-2.5 text-sm font-semibold transition-colors">
-                📋 Copier la clé
+                onclick="navigator.clipboard.writeText('${d.api_key}').then(()=>{ document.getElementById('copy-btn').innerHTML='${ic('check','w-4 h-4')} Copié'; })"
+                class="mt-3 w-full bg-accent-600 hover:bg-accent-700 text-white rounded-md py-2.5 text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                ${ic('copy','w-4 h-4')} Copier la clé
             </button>
-            <p class="text-xs text-slate-500 text-center mt-2">Générée le ${fdate(d.generated_at)}</p>`
+            <p class="text-xs text-ink-3 text-center mt-2">Générée le ${fdate(d.generated_at)}</p>`
         );
         loadClients();
-    } catch(e) { alert(e.error || 'Erreur génération clé.'); }
+    } catch(e) { alert(e.error || 'Erreur lors de la génération de la clé.'); }
 }
 
 // ════════════════════════════════════════
-// MODAL
+// MODALE
 // ════════════════════════════════════════
 function openModal(title, sub, body) {
     document.getElementById('modal-title').textContent = title;
@@ -1213,7 +1260,7 @@ document.getElementById('modal').addEventListener('click', e => {
 });
 
 // ════════════════════════════════════════
-// DASHBOARD PAR CLIENT
+// FICHE PAR CLIENT
 // ════════════════════════════════════════
 let _cdClients = [];
 let _cdSelected = null;
@@ -1224,63 +1271,52 @@ async function loadCliDashList() {
     try {
         _cdClients = await api('GET', '/admin/clients');
         renderCliList(_cdClients);
-        // Re-sélectionner le client courant si présent
         if (_cdSelected) selectClient(_cdSelected.id);
-    } catch(e) {
-        el.innerHTML = '<p class="text-red-400 text-xs text-center py-6">Erreur.</p>';
-    }
+    } catch(e) { el.innerHTML = errorHtml('Erreur.'); }
 }
 
 function renderCliList(clients) {
     const el = document.getElementById('cd-list');
-    if (!clients.length) {
-        el.innerHTML = '<p class="text-slate-500 text-xs text-center py-6">Aucun client.</p>';
-        return;
-    }
+    if (!clients.length) { el.innerHTML = emptyHtml('Aucun client.'); return; }
     el.innerHTML = clients.map(c => `
-        <div class="cd-cli-row px-4 py-3 cursor-pointer border-b border-slate-700/40 last:border-0 hover:bg-slate-700/40 transition-colors flex items-center gap-3"
-             data-id="${c.id}" data-label="${c.denomination}"
-             onclick="selectClient('${c.id}')">
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shrink-0
-                ${c.actif ? 'bg-blue-900/60 text-blue-300' : 'bg-slate-700 text-slate-500'}">
+        <div class="cd-cli-row px-4 py-3 cursor-pointer border-b border-line last:border-0 hover:bg-canvas transition-colors flex items-center gap-3 border-l-2 border-l-transparent"
+             data-id="${c.id}" data-label="${c.denomination}" onclick="selectClient('${c.id}')">
+            <div class="w-8 h-8 rounded-md flex items-center justify-center text-xs font-semibold shrink-0
+                ${c.actif ? 'bg-accent-50 text-accent-600' : 'bg-canvas text-ink-4 border border-line'}">
                 ${(c.denomination||'?')[0].toUpperCase()}
             </div>
             <div class="min-w-0 flex-1">
-                <p class="text-sm text-slate-200 font-medium truncate">${c.denomination}</p>
-                <p class="text-[10px] text-slate-500">${c.id_client} · ${c.nb_prelevements} prélt.</p>
+                <p class="text-sm text-ink font-medium truncate">${c.denomination}</p>
+                <p class="text-[10px] text-ink-3 font-mono">${c.id_client} · ${c.nb_prelevements} prélt.</p>
             </div>
-            <span class="w-2 h-2 rounded-full shrink-0 ${c.actif ? 'bg-green-500' : 'bg-slate-600'}"></span>
+            <span class="w-1.5 h-1.5 rounded-full shrink-0 ${c.actif ? 'bg-ok-600' : 'bg-ink-4'}"></span>
         </div>`).join('');
 }
 
 function filterCliList(q) {
     const lq = q.toLowerCase();
     document.querySelectorAll('.cd-cli-row').forEach(row => {
-        const match = !lq || row.textContent.toLowerCase().includes(lq);
-        row.style.display = match ? '' : 'none';
+        row.style.display = (!lq || row.textContent.toLowerCase().includes(lq)) ? '' : 'none';
     });
 }
 
 async function selectClient(clientDbId) {
-    // Highlight sélection
     document.querySelectorAll('.cd-cli-row').forEach(r => {
         const sel = r.dataset.id === clientDbId;
-        r.classList.toggle('bg-slate-700/60', sel);
-        r.classList.toggle('border-l-2',      sel);
-        r.classList.toggle('border-blue-500', sel);
+        r.classList.toggle('bg-accent-50', sel);
+        r.classList.toggle('border-l-accent-600', sel);
+        r.classList.toggle('border-l-transparent', !sel);
     });
 
     document.getElementById('cd-empty').classList.add('hidden');
     document.getElementById('cd-content').classList.remove('hidden');
 
-    // Spinner dans les zones de données
     ['cd-kpi-tot','cd-kpi-pot','cd-kpi-npot','cd-kpi-rate'].forEach(id => {
         document.getElementById(id).textContent = '…';
     });
     document.getElementById('cd-prevs').innerHTML = spinnerHtml();
     document.getElementById('cd-sources').innerHTML = '';
 
-    // Infos du client depuis le cache
     const cli = _cdClients.find(c => c.id === clientDbId);
     _cdSelected = cli;
     if (cli) {
@@ -1289,57 +1325,53 @@ async function selectClient(clientDbId) {
         document.getElementById('cd-meta').textContent   = `${cli.id_client} · ${cli.adresse || ''}`;
         const statusEl = document.getElementById('cd-status');
         statusEl.textContent = cli.actif ? 'Actif' : 'Inactif';
-        statusEl.className = `text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
-            cli.actif ? 'bg-green-900/50 text-green-400' : 'bg-slate-700 text-slate-500'}`;
+        statusEl.className = `text-xs px-2 py-0.5 rounded font-medium shrink-0 ${
+            cli.actif ? 'bg-ok-50 text-ok-600' : 'bg-canvas text-ink-3 border border-line'}`;
     }
 
-    // Charger les prélèvements du client (la route attend l'id_client métier, pas l'id DB)
     const idMetier = cli?.id_client || clientDbId;
     try {
         const d = await api('GET', `/analyste/clients/${encodeURIComponent(idMetier)}/prelevements?per_page=100`);
         const items = d.items || d || [];
 
-        const total = items.length;
-        const potables   = items.filter(p => p.prediction?.potable === 1).length;
-        const nonPot     = items.filter(p => p.prediction?.potable === 0).length;
-        const rate       = total > 0 ? (potables / total * 100).toFixed(1) : null;
+        const total    = items.length;
+        const potables = items.filter(p => p.prediction?.potable === 1).length;
+        const nonPot   = items.filter(p => p.prediction?.potable === 0).length;
+        const rate     = total > 0 ? (potables / total * 100).toFixed(1) : null;
 
         document.getElementById('cd-kpi-tot').textContent  = total;
         document.getElementById('cd-kpi-pot').textContent  = potables;
         document.getElementById('cd-kpi-npot').textContent = nonPot;
-        document.getElementById('cd-kpi-rate').textContent = rate != null ? `${rate}%` : '—';
+        document.getElementById('cd-kpi-rate').textContent = rate != null ? `${rate} %` : '—';
 
-        // Barre
         const pct = rate ?? 0;
         document.getElementById('cd-bar').style.width = `${pct}%`;
-        document.getElementById('cd-bar').className   = `h-full rounded-full transition-all duration-700 ${
-            pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-red-500'}`;
-        document.getElementById('cd-bar-label').textContent = `${potables} potables / ${nonPot} non potables`;
+        document.getElementById('cd-bar').className   = `h-full transition-all duration-700 ${
+            pct >= 70 ? 'bg-ok-600' : pct >= 40 ? 'bg-warn-600' : 'bg-bad-600'}`;
+        document.getElementById('cd-bar-label').textContent = `${potables} conformes / ${nonPot} non conformes`;
 
-        // Sources
         const bySource = {};
         items.forEach(p => { bySource[p.source||'?'] = (bySource[p.source||'?']||0) + 1; });
         document.getElementById('cd-sources').innerHTML = Object.entries(bySource).map(([src, n]) => `
             <div class="flex items-center justify-between">
                 ${sourceBadge(src)}
-                <span class="text-sm font-semibold text-slate-200">${n}</span>
-            </div>`).join('') || '<p class="text-slate-600 text-xs">—</p>';
+                <span class="text-sm font-semibold text-ink tnum">${n}</span>
+            </div>`).join('') || '<p class="text-ink-4 text-xs">—</p>';
 
-        // Prélèvements récents (5 derniers)
         const recent = [...items].sort((a,b) =>
             new Date(b.date_prelevement||b.created_at) - new Date(a.date_prelevement||a.created_at)
         ).slice(0, 8);
         document.getElementById('cd-prevs').innerHTML = prevTable(recent, false);
 
     } catch(e) {
-        const msg = e?.error || e?.message || JSON.stringify(e) || 'Erreur inconnue';
-        document.getElementById('cd-prevs').innerHTML = `<p class="text-red-400 text-xs text-center py-6">${msg}</p>`;
-        document.getElementById('cd-sources').innerHTML = '<p class="text-red-400 text-xs">—</p>';
+        const msg = e?.error || e?.message || 'Erreur inconnue';
+        document.getElementById('cd-prevs').innerHTML = errorHtml(msg);
+        document.getElementById('cd-sources').innerHTML = '<p class="text-bad-600 text-xs">—</p>';
     }
 }
 
 // ════════════════════════════════════════
-// EXPLOIT — Audit
+// EXPLOITATION — Audit
 // ════════════════════════════════════════
 let _auditPage = 1;
 
@@ -1363,53 +1395,52 @@ async function loadAudit(page) {
             d.total ? `${d.total} entrée${d.total > 1 ? 's' : ''}` : 'Aucun résultat';
 
         if (!items.length) {
-            el.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">Aucune entrée.</p>';
+            el.innerHTML = emptyHtml('Aucune entrée.');
             document.getElementById('aud-pagination').classList.add('hidden');
             return;
         }
 
-        const statusCls = s => s < 300 ? 'text-green-400' : s < 500 ? 'text-yellow-400' : 'text-red-400';
+        const statusCls = s => s < 300 ? 'text-ok-600' : s < 500 ? 'text-warn-600' : 'text-bad-600';
         el.innerHTML = `<div class="overflow-x-auto">
         <table class="w-full text-xs">
-            <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wide border-b border-slate-700">
-                <th class="text-left px-4 py-3">Horodatage</th>
-                <th class="text-left px-4 py-3">Acteur</th>
-                <th class="text-left px-4 py-3">Rôle</th>
-                <th class="text-left px-4 py-3">IP</th>
-                <th class="text-left px-4 py-3">Action</th>
-                <th class="text-left px-4 py-3">Ressource</th>
-                <th class="text-left px-4 py-3">Statut</th>
+            <thead><tr class="text-[10px] text-ink-3 uppercase tracking-wider border-b border-line bg-canvas">
+                <th class="text-left px-4 py-2.5 font-semibold">Horodatage</th>
+                <th class="text-left px-4 py-2.5 font-semibold">Acteur</th>
+                <th class="text-left px-4 py-2.5 font-semibold">Rôle</th>
+                <th class="text-left px-4 py-2.5 font-semibold">IP</th>
+                <th class="text-left px-4 py-2.5 font-semibold">Action</th>
+                <th class="text-left px-4 py-2.5 font-semibold">Ressource</th>
+                <th class="text-left px-4 py-2.5 font-semibold">Statut</th>
             </tr></thead>
-            <tbody>${items.map(l => `<tr class="border-b border-slate-700/40 hover:bg-slate-700/20 transition-colors">
-                <td class="px-4 py-2.5 text-slate-500 whitespace-nowrap">${new Date(l.timestamp).toLocaleString('fr-FR')}</td>
-                <td class="px-4 py-2.5 font-mono text-slate-300">${l.actor_id || '—'}</td>
-                <td class="px-4 py-2.5 text-slate-400">${l.actor_role || l.actor_type || '—'}</td>
-                <td class="px-4 py-2.5 font-mono text-slate-500">${l.ip_address || '—'}</td>
-                <td class="px-4 py-2.5 text-slate-300">${l.action}</td>
-                <td class="px-4 py-2.5 font-mono text-slate-500 truncate max-w-[120px]">${l.resource_id ? l.resource_id.slice(0,8)+'…' : '—'}</td>
-                <td class="px-4 py-2.5 font-bold ${statusCls(l.status_code)}">${l.status_code}</td>
+            <tbody>${items.map(l => `<tr class="border-b border-line last:border-0 hover:bg-canvas transition-colors">
+                <td class="px-4 py-2 text-ink-3 whitespace-nowrap tnum">${new Date(l.timestamp).toLocaleString('fr-FR')}</td>
+                <td class="px-4 py-2 font-mono text-ink">${l.actor_id || '—'}</td>
+                <td class="px-4 py-2 text-ink-2">${l.actor_role || l.actor_type || '—'}</td>
+                <td class="px-4 py-2 font-mono text-ink-3">${l.ip_address || '—'}</td>
+                <td class="px-4 py-2 text-ink">${l.action}</td>
+                <td class="px-4 py-2 font-mono text-ink-3 truncate max-w-[120px]">${l.resource_id ? l.resource_id.slice(0,8)+'…' : '—'}</td>
+                <td class="px-4 py-2 font-semibold tnum ${statusCls(l.status_code)}">${l.status_code}</td>
             </tr>`).join('')}</tbody>
         </table></div>`;
 
-        // Pagination
         const pg = document.getElementById('aud-pagination');
         if (d.pages > 1) {
-            pg.classList.remove('hidden');
+            pg.classList.remove('hidden'); pg.classList.add('flex');
             document.getElementById('aud-page-info').textContent = `Page ${d.page} / ${d.pages}`;
             document.getElementById('aud-prev').disabled = d.page <= 1;
             document.getElementById('aud-next').disabled = d.page >= d.pages;
         } else {
-            pg.classList.add('hidden');
+            pg.classList.add('hidden'); pg.classList.remove('flex');
         }
     } catch(e) {
-        el.innerHTML = `<p class="text-red-400 text-sm text-center py-8">${e.error || 'Erreur chargement audit.'}</p>`;
+        el.innerHTML = errorHtml(e.error || 'Erreur de chargement du journal.');
     }
 }
 
 function auditPage(delta) { loadAudit(_auditPage + delta); }
 
 // ════════════════════════════════════════
-// EXPLOIT — Métriques
+// EXPLOITATION — Métriques
 // ════════════════════════════════════════
 async function loadMetrics() {
     const el = document.getElementById('mx-routes');
@@ -1422,43 +1453,40 @@ async function loadMetrics() {
         document.getElementById('mx-actifs').textContent  = d.clients_actifs ?? '—';
         document.getElementById('mx-prevs').textContent   = d.total_prelevements ?? '—';
         document.getElementById('mx-rate').textContent    = d.potable_rate != null
-            ? `${(d.potable_rate * 100).toFixed(1)}%` : '—';
+            ? `${(d.potable_rate * 100).toFixed(1)} %` : '—';
 
         const routes = d.routes || {};
         const sorted = Object.entries(routes).sort((a, b) => b[1].count - a[1].count);
-        if (!sorted.length) {
-            el.innerHTML = '<p class="text-slate-500 text-sm text-center py-10">Aucune métrique.</p>';
-            return;
-        }
-        const errCls = r => r > 0.1 ? 'text-red-400' : r > 0 ? 'text-yellow-400' : 'text-green-400';
+        if (!sorted.length) { el.innerHTML = emptyHtml('Aucune métrique.'); return; }
+        const errCls = r => r > 0.1 ? 'text-bad-600' : r > 0 ? 'text-warn-600' : 'text-ok-600';
         el.innerHTML = `<div class="overflow-x-auto">
         <table class="w-full text-sm">
-            <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wide border-b border-slate-700">
-                <th class="text-left px-6 py-3">Route</th>
-                <th class="text-right px-6 py-3">Requêtes</th>
-                <th class="text-right px-6 py-3">Erreurs</th>
-                <th class="text-right px-6 py-3">Taux err.</th>
-                <th class="text-right px-6 py-3">p50 (ms)</th>
-                <th class="text-right px-6 py-3">p95 (ms)</th>
-                <th class="text-right px-6 py-3">Moy. (ms)</th>
+            <thead><tr class="text-[10px] text-ink-3 uppercase tracking-wider border-b border-line bg-canvas">
+                <th class="text-left px-5 py-2.5 font-semibold">Route</th>
+                <th class="text-right px-5 py-2.5 font-semibold">Requêtes</th>
+                <th class="text-right px-5 py-2.5 font-semibold">Erreurs</th>
+                <th class="text-right px-5 py-2.5 font-semibold">Taux err.</th>
+                <th class="text-right px-5 py-2.5 font-semibold">p50 (ms)</th>
+                <th class="text-right px-5 py-2.5 font-semibold">p95 (ms)</th>
+                <th class="text-right px-5 py-2.5 font-semibold">Moy. (ms)</th>
             </tr></thead>
-            <tbody>${sorted.map(([route, m]) => `<tr class="border-b border-slate-700/40 hover:bg-slate-700/20 transition-colors">
-                <td class="px-6 py-3 font-mono text-slate-300 text-xs">${route}</td>
-                <td class="px-6 py-3 text-right text-slate-300">${m.count}</td>
-                <td class="px-6 py-3 text-right ${m.errors > 0 ? 'text-red-400' : 'text-slate-500'}">${m.errors}</td>
-                <td class="px-6 py-3 text-right font-semibold ${errCls(m.error_rate)}">${(m.error_rate*100).toFixed(1)}%</td>
-                <td class="px-6 py-3 text-right text-slate-400">${m.p50_ms}</td>
-                <td class="px-6 py-3 text-right text-slate-400">${m.p95_ms}</td>
-                <td class="px-6 py-3 text-right text-slate-400">${m.avg_ms}</td>
+            <tbody>${sorted.map(([route, m]) => `<tr class="border-b border-line last:border-0 hover:bg-canvas transition-colors">
+                <td class="px-5 py-2.5 font-mono text-ink text-xs">${route}</td>
+                <td class="px-5 py-2.5 text-right text-ink tnum">${m.count}</td>
+                <td class="px-5 py-2.5 text-right tnum ${m.errors > 0 ? 'text-bad-600' : 'text-ink-3'}">${m.errors}</td>
+                <td class="px-5 py-2.5 text-right font-semibold tnum ${errCls(m.error_rate)}">${(m.error_rate*100).toFixed(1)} %</td>
+                <td class="px-5 py-2.5 text-right text-ink-2 tnum">${m.p50_ms}</td>
+                <td class="px-5 py-2.5 text-right text-ink-2 tnum">${m.p95_ms}</td>
+                <td class="px-5 py-2.5 text-right text-ink-2 tnum">${m.avg_ms}</td>
             </tr>`).join('')}</tbody>
         </table></div>`;
     } catch(e) {
-        el.innerHTML = `<p class="text-red-400 text-sm text-center py-8">${e.error || 'Erreur chargement métriques.'}</p>`;
+        el.innerHTML = errorHtml(e.error || 'Erreur de chargement des métriques.');
     }
 }
 
 // ════════════════════════════════════════
-// API EXPLORER
+// EXPLORATEUR D'API
 // ════════════════════════════════════════
 let _apiSpec = null;
 
@@ -1473,7 +1501,7 @@ async function loadApiExplorer() {
         document.getElementById('api-spec-ver').textContent = ver ? `v${ver}` : '';
         renderApiExplorer(_apiSpec);
     } catch(e) {
-        el.innerHTML = `<p class="text-red-400 text-sm text-center py-8">Impossible de charger la spécification API (${e.message}).</p>`;
+        el.innerHTML = errorHtml(`Impossible de charger la spécification de l'API (${e.message}).`);
     }
 }
 
@@ -1495,12 +1523,12 @@ function renderApiExplorer(spec) {
     });
     document.getElementById('api-endpoints').innerHTML = sorted.map(([tag, eps]) => `
         <div class="api-group">
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">${tag}</p>
+            <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-widest mb-2">${tag}</p>
             <div class="space-y-1.5">${eps.map(ep => renderEndpointCard(ep, spec)).join('')}</div>
-        </div>`).join('') || '<p class="text-slate-500 text-center py-10 text-sm">Aucun endpoint.</p>';
+        </div>`).join('') || emptyHtml('Aucun endpoint.');
 }
 
-const _MC = { get:'bg-blue-600', post:'bg-emerald-600', put:'bg-orange-500', delete:'bg-red-600', patch:'bg-yellow-600' };
+const _MC = { get:'bg-accent-600', post:'bg-ok-600', put:'bg-warn-600', delete:'bg-bad-600', patch:'bg-ink-2' };
 
 function renderEndpointCard({ path, method, op }, spec) {
     const id = `ep_${method}_${path}`.replace(/[^a-z0-9]/gi,'_');
@@ -1513,49 +1541,49 @@ function renderEndpointCard({ path, method, op }, spec) {
         try { defaultBody = JSON.stringify(_schemaDef(bodyP.schema, spec), null, 2); } catch(_) {}
     }
     return `
-    <div class="api-card bg-slate-800 border border-slate-700 rounded-xl overflow-hidden" id="${id}">
-        <div onclick="toggleApiEp('${id}')" class="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-slate-700/40 transition-colors select-none">
-            <span class="shrink-0 text-[10px] font-bold font-mono uppercase text-white text-center w-16 py-0.5 rounded ${_MC[method]||'bg-slate-600'}">${method}</span>
-            <span class="font-mono text-sm text-slate-200 flex-1 truncate">${path}</span>
-            <span class="text-slate-500 text-xs hidden md:block shrink-0 truncate max-w-xs">${op.summary||''}</span>
-            <span class="text-slate-600 text-xs shrink-0" id="${id}__arr">▼</span>
+    <div class="api-card bg-surface border border-line rounded-md overflow-hidden" id="${id}">
+        <div onclick="toggleApiEp('${id}')" class="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-canvas transition-colors select-none">
+            <span class="shrink-0 text-[10px] font-semibold font-mono uppercase text-white text-center w-16 py-0.5 rounded ${_MC[method]||'bg-ink-3'}">${method}</span>
+            <span class="font-mono text-sm text-ink flex-1 truncate">${path}</span>
+            <span class="text-ink-3 text-xs hidden md:block shrink-0 truncate max-w-xs">${op.summary||''}</span>
+            <span class="text-ink-4 text-[10px] shrink-0" id="${id}__arr">▾</span>
         </div>
-        <div id="${id}__body" class="hidden border-t border-slate-700 p-5 space-y-4">
-            ${op.description ? `<p class="text-slate-400 text-sm">${op.description}</p>` : ''}
+        <div id="${id}__body" class="hidden border-t border-line p-5 space-y-4 bg-canvas/50">
+            ${op.description ? `<p class="text-ink-2 text-sm">${op.description}</p>` : ''}
             ${pathPs.length ? `
             <div>
-                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Paramètres de chemin</p>
+                <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider mb-2">Paramètres de chemin</p>
                 <div class="space-y-2">${pathPs.map(p => `
                     <div class="flex items-center gap-3">
-                        <label class="font-mono text-xs text-yellow-300 w-32 shrink-0">{${p.name}}</label>
+                        <label class="font-mono text-xs text-accent-600 w-32 shrink-0">{${p.name}}</label>
                         <input id="${id}__pp__${p.name}" type="text" placeholder="${p.description||p.name}"
-                            class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono transition-colors">
+                            class="flex-1 bg-surface border border-line rounded px-3 py-1.5 text-sm text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 font-mono transition-colors">
                     </div>`).join('')}
                 </div>
             </div>` : ''}
             ${queryPs.length ? `
             <div>
-                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Paramètres de requête</p>
+                <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider mb-2">Paramètres de requête</p>
                 <div class="grid grid-cols-2 gap-2">${queryPs.map(p => `
                     <div>
-                        <label class="text-[10px] font-mono text-slate-500 block mb-1">${p.name}${p.required?' <span class="text-red-400">*</span>':''}</label>
+                        <label class="text-[10px] font-mono text-ink-3 block mb-1">${p.name}${p.required?' <span class="text-bad-600">*</span>':''}</label>
                         <input id="${id}__qp__${p.name}" type="text" placeholder="${p.description||''}"
-                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-blue-500 font-mono transition-colors">
+                            class="w-full bg-surface border border-line rounded px-3 py-1.5 text-sm text-ink placeholder-ink-4 focus:outline-none focus:border-accent-500 font-mono transition-colors">
                     </div>`).join('')}
                 </div>
             </div>` : ''}
             ${bodyP ? `
             <div>
-                <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Corps JSON</p>
+                <p class="text-[10px] font-semibold text-ink-3 uppercase tracking-wider mb-2">Corps JSON</p>
                 <textarea id="${id}__bj" rows="7" spellcheck="false"
-                    class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-green-300 font-mono focus:outline-none focus:border-blue-500 resize-y transition-colors">${defaultBody}</textarea>
+                    class="w-full bg-surface border border-line rounded px-3 py-2 text-sm text-ink font-mono focus:outline-none focus:border-accent-500 resize-y transition-colors">${defaultBody}</textarea>
             </div>` : ''}
             <div class="flex items-center gap-3 pt-1">
                 <button onclick="tryApiEp('${id}','${method}','${path}')"
-                    class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg px-5 py-2 text-sm font-semibold transition-colors">
-                    ▶ Envoyer
+                    class="inline-flex items-center gap-2 bg-accent-600 hover:bg-accent-700 text-white rounded-md px-4 py-2 text-sm font-semibold transition-colors">
+                    ${ic('send','w-3.5 h-3.5')} Envoyer
                 </button>
-                <span class="text-xs text-slate-600">Auth injectée depuis la session</span>
+                <span class="text-xs text-ink-3">Authentification injectée depuis la session</span>
             </div>
             <div id="${id}__res" class="hidden"></div>
         </div>
@@ -1585,7 +1613,7 @@ function toggleApiEp(id) {
     const arrow = document.getElementById(`${id}__arr`);
     const open  = !body.classList.contains('hidden');
     body.classList.toggle('hidden', open);
-    arrow.textContent = open ? '▼' : '▲';
+    arrow.textContent = open ? '▾' : '▴';
 }
 
 async function tryApiEp(id, method, pathTpl) {
@@ -1622,15 +1650,15 @@ async function tryApiEp(id, method, pathTpl) {
         const text = await r.text();
         let pretty = text;
         try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
-        const sc = r.status < 300 ? 'text-green-400' : r.status < 500 ? 'text-yellow-400' : 'text-red-400';
+        const sc = r.status < 300 ? 'text-ok-600' : r.status < 500 ? 'text-warn-600' : 'text-bad-600';
         resEl.innerHTML = `
             <div class="flex items-center gap-3 mb-2 pt-1">
-                <span class="font-mono font-bold text-sm ${sc}">${r.status} ${r.statusText}</span>
-                <span class="text-xs text-slate-500">${ms} ms</span>
+                <span class="font-mono font-semibold text-sm ${sc}">${r.status} ${r.statusText}</span>
+                <span class="text-xs text-ink-3 tnum">${ms} ms</span>
             </div>
-            <pre class="bg-slate-950 border border-slate-700 rounded-lg p-4 text-xs text-slate-300 font-mono overflow-x-auto max-h-72 overflow-y-auto">${_esc(pretty)}</pre>`;
+            <pre class="bg-ink text-white/90 rounded-md p-4 text-xs font-mono overflow-x-auto max-h-72 overflow-y-auto">${_esc(pretty)}</pre>`;
     } catch(e) {
-        resEl.innerHTML = `<p class="text-red-400 text-sm py-2">Erreur réseau : ${e.message}</p>`;
+        resEl.innerHTML = errorHtml(`Erreur réseau : ${e.message}`);
     }
 }
 
@@ -1648,7 +1676,7 @@ function filterApiRoutes(q) {
 }
 
 // ════════════════════════════════════════
-// INIT
+// INITIALISATION
 // ════════════════════════════════════════
 if (S.type && S.key && S.profile) {
     showApp();
