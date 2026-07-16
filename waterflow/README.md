@@ -21,9 +21,9 @@ waterflow/
 │       └── predict_service.py  # XGBoost via MLflow
 ├── templates/index.html        # Interface web (SPA Tailwind) clients + experts
 ├── scripts/init_db.py          # Initialisation DB + données de test
+├── test_api.py                 # Tests d'intégration complets (à la racine)
 ├── tests/
 │   ├── conftest.py             # Config partagée (tokens experts, env de test)
-│   ├── test_api.py             # Tests intégration complets (Potabilis)
 │   ├── test_e2e.py             # Test bout en bout : OCR → prédiction
 │   ├── test_unitaires.py       # Tests unitaires (modèle)
 │   ├── test_fonctionnels.py    # Tests fonctionnels (routes)
@@ -103,18 +103,41 @@ docker compose logs -f waterflow2
 ## Lancer les tests
 
 ```bash
-# Tous les tests
-pytest tests/ -v
+# Suite complète : 165 tests (5 suites + intégration)
+pytest tests/ test_api.py
 
-# Avec couverture
-pytest tests/ -v --cov=api
+# Avec mesure de couverture des modules applicatifs
+pytest tests/ test_api.py --cov=app --cov=routes --cov=auth --cov=db \
+       --cov=predict_service --cov=ocr_service --cov=logging_config
 
 # Test bout en bout uniquement
 pytest tests/test_e2e.py -v
 
-# Tests d'intégration Potabilis
-pytest tests/test_api.py -v
+# Tests d'intégration uniquement
+pytest test_api.py -v
 ```
+
+### Taux de couverture : cible et justification
+
+Mesure sur la suite complète : **71 % du code applicatif**, détaillé ainsi.
+
+| Module | Couverture | Lecture |
+|---|---|---|
+| `predict_service.py` | 100 % | cœur métier : chargement du modèle, prédiction |
+| `logging_config.py` | 86 % | logs JSON structurés |
+| `auth.py` / `db.py` | 84 % | authentification, accès données |
+| `routes.py` | 81 % | endpoints API |
+| `ocr_service.py` | 15 % | appels réseau externes (voir ci-dessous) |
+
+La cible retenue est **au moins 80 % sur les modules métier** (prédiction, auth,
+données, routes) : c'est là que vivent les régressions qui coûtent, et la cible est
+atteinte partout (81 à 100 %). Viser 100 % global aurait un mauvais rapport
+coût/bénéfice : l'écart vient presque entièrement de `ocr_service.py`, dont les
+lignes non couvertes sont les appels réels aux services externes (OCR.space,
+Claude Vision). Les tester exigerait du réseau et des clés en CI — précisément ce
+qu'une suite de tests doit éviter pour rester déterministe. Ce qui compte dans ce
+module — la bascule vers le repli quand le service externe tombe — est couvert par
+les tests d'erreur et le scénario d'incident (voir `docs/incident.md`, E5).
 
 ---
 
