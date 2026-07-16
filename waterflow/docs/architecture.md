@@ -88,6 +88,25 @@ MONDE 2 — EXPERTS
   Décorateur : @require_expert(role=...)
 ```
 
+### Sécurité de l'API — positionnement face à l'OWASP Top 10
+
+L'API expose un modèle de ML à des clients externes : les risques du
+[Top 10 OWASP](https://owasp.org/www-project-top-ten/) s'y appliquent. Mesures en
+place, rapportées aux catégories concernées :
+
+| Risque OWASP | Mesure dans Waterflow 2 |
+|---|---|
+| A01 — Broken Access Control | Deux périmètres étanches (clients / experts), rôles vérifiés serveur (`@require_expert(role=...)`) et reflétés dans l'UI : un client ne voit que ses prélèvements, un analyste n'accède pas à l'audit. |
+| A02 — Cryptographic Failures | Aucun secret en clair : les tokens experts sont comparés via leur empreinte SHA-256 (`auth.py`), jamais stockés bruts. |
+| A03 — Injection | Accès BDD exclusivement via l'ORM SQLAlchemy : requêtes paramétrées, pas de SQL concaténé. |
+| A05 — Security Misconfiguration | Secrets hors du code (`.env`, gitignoré) ; l'image Docker n'embarque aucune clé. |
+| A07 — Identification & Authentication Failures | Renouvellement des accès prévu : `POST /admin/clients/<id>/apikey` régénère la clé d'un client (révocation immédiate de l'ancienne). |
+| A09 — Security Logging & Monitoring Failures | Logs JSON structurés sur chaque échec d'auth + alerte `PicAuthEchouees` (Prometheus) : plus d'un échec/s pendant 2 min déclenche une notification. |
+
+Les autres catégories (A04, A06, A08, A10) sont suivies mais sans mesure dédiée : le
+périmètre du projet (API interne, pas de dépendance exotique, pas de désérialisation
+d'objets) ne les expose pas directement.
+
 ---
 
 ## Base de données — 6 tables
