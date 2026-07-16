@@ -17,6 +17,7 @@ from prometheus_flask_exporter import PrometheusMetrics
 from api.models.db     import init_db, purge_old_logs
 from api.routes.routes import bp
 from extensions        import limiter
+from logging_config    import setup_logging
 
 _ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -78,10 +79,8 @@ def create_app() -> Flask:
         static_folder=os.path.join(_ROOT, "static"),
     )
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    )
+    # Journalisation structurée JSON (C20) — voir logging_config.py
+    setup_logging()
 
     # ── Prometheus métriques (/metrics) ─────────────────────────────────────
     PrometheusMetrics(app, group_by="endpoint")

@@ -19,6 +19,7 @@ Fallback : Claude Vision (anthropic) si OCR.space échoue ou clé absente.
 
 import os
 import re
+import time
 import json
 import base64
 import logging
@@ -286,14 +287,22 @@ def extract_from_document(file_bytes: bytes, mime: str) -> dict[str, Any]:
     if mime not in ACCEPTED_MIME:
         raise ValueError(f"Type non supporté : {mime}")
 
-    # Stratégie 1 : OCR.space + Claude structuration
+    size_kb = round(len(file_bytes) / 1024, 1)
+
+    # Stratégie 1 : OCR.space + structuration
+    # Les logs sont des événements structurés (cf. logging_config.py) : on journalise
+    # le fournisseur, la durée et l'erreur — jamais le contenu de la fiche (RGPD).
     if OCR_SPACE_KEY:
+        started = time.monotonic()
         try:
-            logger.info("Tentative OCR.space | type=%s taille=%.1fko", mime, len(file_bytes)/1024)
+            logger.info("ocr_attempt", extra={"provider": "ocr.space", "mime": mime, "size_kb": size_kb})
             raw_text = _ocr_space(file_bytes, mime)
             if len(raw_text) < 20:
                 raise ValueError("Texte OCR.space trop court, basculement sur Claude Vision")
-            logger.info("OCR.space OK | %d chars", len(raw_text))
+            logger.info("ocr_success", extra={
+                "provider": "ocr.space", "chars": len(raw_text),
+                "duration_ms": round((time.monotonic() - started) * 1000),
+            })
             # Structuration : Claude si clé dispo (sémantique supérieure),
             # sinon parseur intégré (aucune IA requise).
             if ANTHROPIC_KEY:
@@ -304,15 +313,28 @@ def extract_from_document(file_bytes: bytes, mime: str) -> dict[str, Any]:
                 result["raw_text"] = raw_text
             return _normalise(result)
         except Exception as exc:
-            logger.warning("OCR.space échoué (%s) — fallback Claude Vision", exc)
+            # Un service externe indisponible ne doit pas faire tomber l'application :
+            # on trace l'incident et on bascule sur le fournisseur de secours.
+            logger.warning("ocr_fallback", extra={
+                "provider": "ocr.space", "host": "api.ocr.space",
+                "error": type(exc).__name__, "detail": str(exc)[:200],
+                "duration_ms": round((time.monotonic() - started) * 1000),
+                "next_provider": "claude_vision",
+            })
 
     # Stratégie 2 : Claude Vision (fallback ou mode sans OCR.space)
     if not ANTHROPIC_KEY:
+        logger.error("ocr_unavailable", extra={"reason": "aucune clé OCR configurée"})
         raise RuntimeError(
             "Aucun service OCR disponible. "
             "Définissez OCR_SPACE_API_KEY et/ou ANTHROPIC_API_KEY."
         )
 
-    logger.info("Claude Vision | type=%s taille=%.1fko", mime, len(file_bytes)/1024)
+    started = time.monotonic()
+    logger.info("ocr_attempt", extra={"provider": "claude_vision", "mime": mime, "size_kb": size_kb})
     result = _claude_vision_extract(file_bytes, mime)
+    logger.info("ocr_success", extra={
+        "provider": "claude_vision",
+        "duration_ms": round((time.monotonic() - started) * 1000),
+    })
     return _normalise(result)
