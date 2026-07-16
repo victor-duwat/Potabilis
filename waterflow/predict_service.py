@@ -56,7 +56,7 @@ def run_prediction(mesures: dict) -> dict:
 
     values_scaled = _scaler.transform(values)
     prediction    = int(_model.predict(values_scaled)[0])
-    probability   = float(_model.predict_proba(values_scaled)[0][1])
+    probability   = float(_model.predict_proba(values_scaled)[0][0])
 
     return {
         "potable":     prediction,
