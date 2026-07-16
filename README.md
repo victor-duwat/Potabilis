@@ -1,6 +1,6 @@
-# Waterflow 2 — Plateforme MLOps de qualité de l'eau
+# Potabilis — Plateforme MLOps de qualité de l'eau
 
-[![CI/CD](https://github.com/victor-duwat/waterflow2/actions/workflows/ci.yml/badge.svg)](https://github.com/victor-duwat/waterflow2/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/victor-duwat/Potabilis/actions/workflows/ci.yml/badge.svg)](https://github.com/victor-duwat/Potabilis/actions/workflows/ci.yml)
 
 > Projet chef-d'œuvre — Titre RNCP 37827 « Développeur en Intelligence Artificielle ».
 > Plateforme de classification de la **potabilité de l'eau** pour des collectivités territoriales :
@@ -57,8 +57,8 @@ Client / Analyste / Exploitation
 ### Option A — Docker (recommandé, tout-en-un)
 
 ```bash
-git clone https://github.com/victor-duwat/waterflow2.git
-cd waterflow2/waterflow
+git clone https://github.com/victor-duwat/Potabilis.git
+cd Potabilis/waterflow
 cp .env.example .env          # renseigner EXPERT_TOKENS (et clés OCR si besoin)
 docker compose up -d --build  # API + Prometheus + Grafana + Alertmanager
 ```
@@ -152,4 +152,4 @@ pytest tests/ --cov=api               # avec couverture
 
 ---
 
-*Waterflow 2 — Victor Duwat · B3 Développeur IA · RNCP 37827*
+*Potabilis — Victor Duwat · B3 Développeur IA · RNCP 37827*

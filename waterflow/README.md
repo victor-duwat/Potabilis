@@ -1,4 +1,4 @@
-# Waterflow 2 — Plateforme MLOps Qualité de l'Eau
+# Potabilis — Plateforme MLOps Qualité de l'Eau
 
 Plateforme de classification de la potabilité de l'eau destinée aux collectivités territoriales.
 Exposée via une **API Flask unique** portant trois modules : données, prédiction ML et ingestion OCR.
@@ -23,7 +23,7 @@ waterflow/
 ├── scripts/init_db.py          # Initialisation DB + données de test
 ├── tests/
 │   ├── conftest.py             # Config partagée (tokens experts, env de test)
-│   ├── test_api.py             # Tests intégration complets (Waterflow 2)
+│   ├── test_api.py             # Tests intégration complets (Potabilis)
 │   ├── test_e2e.py             # Test bout en bout : OCR → prédiction
 │   ├── test_unitaires.py       # Tests unitaires (modèle)
 │   ├── test_fonctionnels.py    # Tests fonctionnels (routes)
@@ -112,7 +112,7 @@ pytest tests/ -v --cov=api
 # Test bout en bout uniquement
 pytest tests/test_e2e.py -v
 
-# Tests d'intégration Waterflow 2
+# Tests d'intégration Potabilis
 pytest tests/test_api.py -v
 ```
 
@@ -231,7 +231,7 @@ Le monitoring est intégré au `docker compose` :
 - L'API expose les métriques au format Prometheus sur **`/metrics`** (via `prometheus_flask_exporter`).
 - **Prometheus** (port 9090) scrape l'API toutes les 10 s.
 - **Grafana** (port 3000, `admin` / `waterflow`) charge automatiquement la source de
-  données et le dashboard `Waterflow 2 — Monitoring API` (taux d'erreur, latences p50/p95,
+  données et le dashboard `Potabilis — Monitoring API` (taux d'erreur, latences p50/p95,
   volume par statut HTTP, latence des routes d'ingestion).
 
 ```bash
