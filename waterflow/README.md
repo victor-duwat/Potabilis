@@ -252,13 +252,17 @@ Le dossier `samples/` contient deux fiches anonymisées :
 Le monitoring est intégré au `docker compose` :
 
 - L'API expose les métriques au format Prometheus sur **`/metrics`** (via `prometheus_flask_exporter`).
-- **Prometheus** (port 9090) scrape l'API toutes les 10 s.
+- **Prometheus** (port 9090) scrape l'API toutes les 10 s et charge **5 règles d'alerte à seuils**
+  (`monitoring/alert.rules.yml`) : taux d'erreurs 5xx, latence p95, pic d'échecs
+  d'authentification, API injoignable, échecs OCR.
+- **Alertmanager** (port 9093) route les alertes vers le canal de l'équipe
+  (webhook Slack en configuration de démonstration, à remplacer en production).
 - **Grafana** (port 3000, `admin` / `waterflow`) charge automatiquement la source de
   données et le dashboard `Potabilis — Monitoring API` (taux d'erreur, latences p50/p95,
   volume par statut HTTP, latence des routes d'ingestion).
 
 ```bash
-docker compose up -d        # API + Prometheus + Grafana
+docker compose up -d        # API + Prometheus + Grafana + Alertmanager
 # Grafana : http://localhost:3000   (dashboard provisionné automatiquement)
 ```
 
@@ -269,4 +273,5 @@ docker compose up -d        # API + Prometheus + Grafana
 - CORS non configuré (à activer si un frontend séparé consomme l'API)
 - La clé API est unique par client (pas de rotation multiple simultanée)
 - Authentification expert par token statique (pas de rotation automatique)
-- Alerting Grafana non configuré (dashboards en lecture seule pour l'instant)
+- Alerting en place côté Prometheus/Alertmanager (5 règles à seuils) ; le webhook Slack
+  est une configuration de démonstration, à renseigner en production
