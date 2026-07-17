@@ -4,7 +4,6 @@ api/app.py — Factory Flask Waterflow 2
 
 import os
 import secrets
-import hashlib
 import logging
 import click
 from dotenv import load_dotenv
@@ -132,13 +131,12 @@ def create_app() -> Flask:
         Usage : flask new-expert-token <login> <role>
         Rôles : analyste | exploit
         """
-        raw_token  = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        raw_token = secrets.token_urlsafe(32)
 
-        print(f"\nToken brut (à transmettre à {login} par canal sécurisé — affiché UNE SEULE FOIS) :")
+        print(f"\nToken (à transmettre à {login} par canal sécurisé, affiché une seule fois) :")
         print(f"  {raw_token}\n")
-        print("Ligne à ajouter/remplacer dans EXPERT_TOKENS dans .env :")
-        print(f"  {login}:{token_hash}:{role}\n")
-        print("Le token brut n'est PAS stocké. Conservez-le ou régénérez-en un nouveau.")
+        print("Ligne à ajouter/remplacer dans EXPERT_TOKENS dans .env (fichier hors dépôt) :")
+        print(f"  {login}:{raw_token}:{role}\n")
+        print("Le token vit uniquement dans .env ; au démarrage il est haché en mémoire (SHA-256).")
 
     return app

@@ -22,10 +22,13 @@ api/middleware/auth.py — Authentification Waterflow 2
               : @require_expert(role="exploit")  → exploit uniquement
 
  Exemple de configuration minimale (.env ou variable système) :
-   EXPERT_TOKENS="alice:<sha256_du_token>:analyste,bob:<sha256_du_token>:exploit"
+   EXPERT_TOKENS="alice:token-alice:analyste,bob:token-bob:exploit"
 
-   Le champ token doit être le hash SHA-256 du token brut (64 chars hex).
-   Générez une entrée prête à coller avec : flask new-expert-token <login> <role>
+   Le champ token est le token BRUT : il vit dans .env (fichier hors dépôt,
+   accès serveur uniquement) et n'est jamais persisté ailleurs. Au démarrage,
+   il est haché en mémoire (SHA-256) et la comparaison des requêtes se fait
+   sur les empreintes. Générez un token robuste avec :
+   flask new-expert-token <login> <role>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
