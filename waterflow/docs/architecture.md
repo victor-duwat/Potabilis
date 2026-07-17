@@ -63,7 +63,7 @@ Client HTTP
 | ORM | SQLAlchemy 2.0 | Portabilité SQLite ↔ PostgreSQL |
 | Base de données | SQLite (dev/prod) | Déploiement simplifié sans service externe |
 | ML tracking | MLflow | Versionnement modèle, reproductibilité |
-| Modèle | XGBoost (sklearn API) | Précision 67 % AUC 0.68 sur dataset équilibré |
+| Modèle | XGBoost (sklearn API) | Accuracy 0.616, AUC 0.654 en évaluation contrôlée (run MLflow evaluation_controlee_v1) |
 | Scaler | RobustScaler | Résistant aux outliers (mesures eau) |
 | OCR primaire | OCR.space | API REST, support PDF+image, gratuit jusqu'à 25k/mois |
 | OCR fallback | Claude Vision (Anthropic) | Fiabilité en cas d'indisponibilité OCR.space |
@@ -124,9 +124,10 @@ d'objets) ne les expose pas directement.
 
 ## Modèle ML
 
-- **Dataset** : Water Potability (Kaggle) — 3 276 échantillons, 9 features
-- **Pipeline** : nettoyage NaN → RobustScaler → XGBoost (max_depth=5, n_estimators=300)
-- **Métriques** : Accuracy 67 %, F1 0.55, AUC-ROC 0.68
+- **Dataset** : Water Potability (Kaggle), 3 276 échantillons, 9 features
+- **Pipeline** : imputation des NaN, RobustScaler, XGBoost (n_estimators=500, max_depth=6, learning_rate=0.05), SMOTE sur le train
+- **Métriques (évaluation contrôlée du modèle v1)** : Accuracy 0.616, F1 0.544, ROC-AUC 0.654, mesurées sur les 656 lignes de validation préparées sans information de la cible (run MLflow `evaluation_controlee_v1`)
+- **Note d'honnêteté** : les métriques d'entraînement d'origine (accuracy 0.791, AUC 0.875, servies par `/analyste/model-info`) sont surestimées : l'imputation utilisait la médiane par classe calculée avant le split, une fuite de la cible corrigée dans l'évaluation contrôlée
 - **Tracking** : MLflow (sqlite:///mlflow_water.db), modèle `WaterQualityXGBoost/1`
 - **Features** : ph, Hardness, Solids, Chloramines, Sulfate, Conductivity, Organic_carbon, Trihalomethanes, Turbidity
 

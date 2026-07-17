@@ -35,10 +35,13 @@ _CONFIG_MOCKEE = os.getenv("MLFLOW_URI") == "mock" or os.getenv("SCALER_PATH") =
 _skip_si_mock  = pytest.mark.skipif(_CONFIG_MOCKEE, reason="config réelle mockée en CI")
 
 # ── Baseline de référence ─────────────────────────────────────────────────────
+# Valeurs issues de l'évaluation contrôlée du modèle v1 (run MLflow
+# evaluation_controlee_v1) : 656 lignes de validation, split stratifié graine 42,
+# imputation par la médiane du train (aucune information de la cible).
 BASELINE_METRICS = {
-    "accuracy":  0.67,
-    "f1_score":  0.55,
-    "roc_auc":   0.68,
+    "accuracy":  0.6159,
+    "f1_score":  0.5435,
+    "roc_auc":   0.6542,
 }
 METRIC_TOLERANCE = 0.02
 
